@@ -1,0 +1,26 @@
+{
+  "name": "@agoramcp/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agoramcp/core": "workspace:*",
+    "@agoramcp/source-gr-test": "workspace:*",
+    "@hono/mcp": "^0.3.2",
+    "@hono/node-server": "^2.1.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "hono": "^4.13.5",
+    "hono-rate-limiter": "^0.5.3",
+    "zod": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.0"
+  }
+}
