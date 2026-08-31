@@ -22,7 +22,7 @@ packages/
 ```bash
 pnpm install
 pnpm dev            # MCP server on :3000
-pnpm dev:web        # landing page on :3000 — run one or the other
+pnpm dev:web        # landing page on :3001
 pnpm typecheck
 ```
 

@@ -1,4 +1,5 @@
 import { sourceKey, type Source } from "@agoramcp/core";
+import { diavgeiaSource } from "@agoramcp/source-gr-diavgeia";
 import { testSource } from "@agoramcp/source-gr-test";
 
 /**
@@ -6,7 +7,7 @@ import { testSource } from "@agoramcp/source-gr-test";
  * `packages/sources/{country}/{id}`, add it to this app's dependencies, and
  * import it here. The server itself needs no changes.
  */
-const SOURCES: readonly Source[] = [testSource];
+const SOURCES: readonly Source[] = [diavgeiaSource, testSource];
 
 /** Keyed by `{country}/{id}`, which is also the mount path. */
 export type Registry = ReadonlyMap<string, Source>;
