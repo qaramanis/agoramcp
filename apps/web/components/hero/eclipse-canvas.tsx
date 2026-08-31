@@ -33,7 +33,9 @@ export default function EclipseCanvas({
     if (!canvas) return;
 
     const gl = canvas.getContext("webgl", {
-      alpha: false,
+      // Transparent so the page-wide starfield behind the hero shows through
+      // the dark parts of the eclipse.
+      alpha: true,
       antialias: false,
       depth: false,
       stencil: false,

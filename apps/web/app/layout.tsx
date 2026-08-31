@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, JetBrains_Mono } from "next/font/google";
 import Navigation from "@/components/navigation/navigation";
+import Starfield from "@/components/background/starfield";
 import Footer from "@/components/footer/footer";
 import "./globals.css";
 
@@ -31,6 +32,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* The page sits above the footer and carries its own background, so
             the footer stays pinned underneath until the content scrolls off. */}
         <div className="relative z-10 w-full bg-background">
+          {/* Negative z-index: above this wrapper's background, below every
+              section's content, and bounded by the wrapper — so the stars stop
+              where the footer starts. */}
+          {/*<Starfield />*/}
           <Navigation />
           {children}
         </div>

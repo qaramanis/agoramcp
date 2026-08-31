@@ -11,7 +11,7 @@ import {
 
 /** One column of the app grid wide, so the squares sit on the 12 column rhythm. */
 const squareClass =
-  "flex aspect-square items-center justify-center rounded-md border border-panel-border p-2 text-center transition-colors duration-300";
+  "flex aspect-square items-center justify-center rounded-md border border-panel-border p-2 text-center bg-background transition-colors duration-300";
 
 /** Only squares with something in them answer the pointer. */
 const filledSquareClass = `${squareClass} hover:border-accent/50`;
@@ -95,7 +95,7 @@ export default function SourceSquares() {
 
         <div className={filledSquareClass}>
           <span className="text-[9px] leading-tight tracking-wider text-muted">
-            and more
+            more comming soon
           </span>
         </div>
       </div>

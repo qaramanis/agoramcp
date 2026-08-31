@@ -9,6 +9,10 @@
  *   - quintic noise interpolation            ->  smoothstep
  * That leaves 4 noise lookups per fragment. Everything visible is kept: rays,
  * chromosphere, diamond ring, solar wind, bloom, grain, cursor interaction.
+ *
+ * The star field it used to draw now lives in `components/background`, behind
+ * the whole page. This shader renders transparent everywhere it is dark so
+ * those stars show through, and opaque over the moon so it still occludes.
  */
 export const VERTEX_SHADER = `
 attribute vec2 a_pos;
@@ -61,17 +65,6 @@ void main() {
   float a = atan(uv.y, uv.x);
 
   vec3 col = vec3(0.005, 0.003, 0.008);
-
-  // Star field. The cell is shaded as a soft round point rather than filled
-  // edge to edge, so stars stay dot-like when the buffer is upscaled.
-  vec2 starCell = gl_FragCoord.xy / 2.5;
-  vec2 starId = floor(starCell);
-  float starHash = hash(starId * 0.73 + vec2(13.7, 29.3));
-  float starBright = step(0.9975, starHash);
-  starBright *= smoothstep(0.5, 0.05, length(fract(starCell) - 0.5));
-  starBright *= (sin(t * 1.5 + starHash * 100.0) * 0.4 + 0.6);
-  starBright *= smoothstep(0.15, 0.45, r);
-  col += vec3(0.80, 0.86, 0.82) * starBright * 0.55;
 
   float discRadius = 0.15;
   float chromoRadius = discRadius + 0.008;
@@ -174,6 +167,10 @@ void main() {
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
   col = mix(col, col * vec3(0.94, 1.06, 0.97), smoothstep(0.05, 0.0, lum) * 0.2);
 
-  gl_FragColor = vec4(col, 1.0);
+  // Premultiplied alpha: what the eclipse lights up is opaque in proportion to
+  // how brightly it is lit, everything else lets the page starfield through.
+  // The moon is forced opaque — a hole in the sky, not a window onto it.
+  float alpha = clamp(max(col.r, max(col.g, col.b)), 0.0, 1.0);
+  gl_FragColor = vec4(col, max(alpha, disc));
 }
 `;

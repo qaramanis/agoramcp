@@ -71,6 +71,15 @@ body {
   overflow-x: hidden;
 }
 
+/* Selection, everywhere. The accent at full strength carrying the page
+   background on top of it — the same pairing as the primary button, so a
+   highlight reads as part of the palette instead of the browser's blue. The
+   two are ~11:1 apart, which holds up over the light footer as well. */
+::selection {
+  background: var(--color-accent);
+  color: var(--color-background);
+}
+
 /* Sweeps the accent across the footer wordmark. */
 @keyframes gradientPulse {
   0%,
