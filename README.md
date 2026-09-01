@@ -46,6 +46,44 @@ Every tool a country exposes is listed, one line each, in
 `docs/{country}-documentation.md` — [`docs/gr-documentation.md`](docs/gr-documentation.md)
 for Greece. Each source's own `DOCUMENTATION.md` is the full reference.
 
+## Deploying
+
+Two Vercel projects, one repository. Each project points at its own app through
+Root Directory; Vercel finds `pnpm-lock.yaml` at the workspace root, installs
+the workspace, and rebuilds a project only when its own files or its workspace
+dependencies change — so `packages/**` redeploys `apps/server`, whose
+`package.json` names those packages, and a web-only commit leaves it alone.
+
+1. **Add New → Project → import this repo.** Root Directory `apps/web`.
+   Next.js is detected. Add the variables below, deploy.
+2. **Again for the server.** Root Directory `apps/server`. Hono is detected
+   from `src/index.ts`, which imports `hono` and default-exports the app, and
+   runs on Fluid compute. There is no build command; Vercel compiles and
+   bundles the TypeScript entry itself.
+3. **Variables.**
+   - `server`: `CORS_ORIGINS` and any source tokens from `.env.example`.
+     `PORT` and `HOST` do not apply; Vercel owns the listener.
+   - `web`: `NEXT_PUBLIC_MCP_BASE_URL` and `MCP_SERVER_URL`, both the server
+     project's production URL. The first is inlined at build time, so redeploy
+     `web` if that URL ever changes.
+
+One dev dependency exists for Vercel's sake: `apps/server` lists `undici-types`
+because Vercel type-checks the entry with a resolver that does not follow
+pnpm's symlinks, so without it `@types/node` cannot reach the package that
+gives `Response` its members and the build fails on `c.res.status`. The pnpm
+version needs nothing extra — Vercel reads the root `packageManager` pin.
+
+What is different on Vercel: there is no boot, so `warm` never runs. A fresh
+instance fills the Diavgeia register on the first call that needs it and holds
+it for as long as the instance lives, which a lightly used server will feel on
+the first organisation search after a quiet spell. The in-memory rate limiter
+counts per instance — keep it as a soft cap, or set `RATE_LIMIT_PER_MINUTE=0`
+and add a Firewall rate-limit rule.
+
+Any host that runs a persistent Node process works as well: `pnpm start` runs
+`apps/server/src/serve.ts`, which binds the port and then runs the warm-up.
+`apps/server/railway.json` is a ready-made config for Railway.
+
 ## Adding a source
 
 Adding a country or a source is a new folder plus one import — the server has no

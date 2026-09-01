@@ -1,4 +1,3 @@
-import { serve } from "@hono/node-server";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { createLogger, createMemoryCache } from "@agoramcp/core";
 import { Hono, type Context } from "hono";
@@ -119,27 +118,12 @@ app.onError((error, c) => {
   );
 });
 
-serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
-  logger.info("listening", {
-    address: `http://${config.host}:${info.port}`,
-    sources: [...registry.keys()],
-    countries: [...bundles.keys()],
-  });
-});
-
-/** Generous: a warm-up exists precisely because the thing it fetches is slow. */
-const WARM_TIMEOUT_MS = 180_000;
-
-// Off the request path and after the port is open, so a slow prefetch never
-// delays the first answer — it only makes it faster when it lands first.
-for (const [key, source] of registry) {
-  if (!source.warm) continue;
-  const warmLogger = logger.child({ source: key });
-  const startedAt = Date.now();
-  source
-    .warm({ cache, logger: warmLogger, signal: AbortSignal.timeout(WARM_TIMEOUT_MS), env: process.env })
-    .then(
-      () => warmLogger.info("warm.ok", { durationMs: Date.now() - startedAt }),
-      (error: unknown) => warmLogger.warn("warm.failed", { durationMs: Date.now() - startedAt, error }),
-    );
-}
+/**
+ * Default export so a host that owns the listener can mount the app as-is:
+ * Vercel detects `src/index.ts` importing hono and runs it on Fluid compute
+ * with zero configuration. `serve.ts` is the entry for hosts that don't —
+ * it binds the port and runs the warm-up, which only pays off where the
+ * process lives on between requests.
+ */
+export default app;
+export { bundles, cache, config, logger, registry };

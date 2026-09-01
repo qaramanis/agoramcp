@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/serve.ts",
+    "start": "tsx src/serve.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@types/node": "^26.4.0",
     "tsx": "^4.23.12",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "undici-types": "~8.3.0"
   }
 }

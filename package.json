@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "pnpm --filter @agoramcp/server dev",
     "dev:web": "pnpm --filter @agoramcp/web dev",
+    "build:web": "pnpm --filter @agoramcp/web build",
     "start": "pnpm --filter @agoramcp/server start",
+    "start:web": "pnpm --filter @agoramcp/web start",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
   },
