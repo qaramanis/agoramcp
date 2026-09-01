@@ -180,7 +180,7 @@ export default function NavigationDesktop({
 
         {/* Mirrors the logo: slides in as the outer CTA fades out. */}
         <Link
-          href="#"
+          href="/quickstart"
           className={`flex h-7 cursor-pointer items-center justify-center overflow-hidden rounded border border-accent/40 bg-accent/20 text-center text-[10px] font-bold tracking-wider whitespace-nowrap text-accent uppercase transition-all duration-300 ease-in-out hover:bg-accent/30 ${
             isScrolled
               ? "w-[90px] opacity-100 blur-0"

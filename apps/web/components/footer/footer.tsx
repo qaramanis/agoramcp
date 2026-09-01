@@ -1,7 +1,7 @@
-import { Fragment } from "react";
 import Link from "next/link";
 import { contactLinks, footerColumns, type FooterLink } from "@/data/footer";
 import { Grid, gutterClass } from "@/components/layout/grid";
+import { loadVersion } from "@/db/queries";
 
 function LinkList({ links }: { links: FooterLink[] }) {
   return (
@@ -27,8 +27,13 @@ function LinkList({ links }: { links: FooterLink[] }) {
 /**
  * Sticky at the bottom of the viewport so the page scrolls off it — the last
  * section slides away and the footer is already there underneath.
+ *
+ * The version is the last row `pnpm db:version` wrote; without one — or
+ * without a database — the slot is left out rather than filled with a guess.
  */
-export default function Footer() {
+export default async function Footer() {
+  const version = await loadVersion();
+
   return (
     <footer
       className={`sticky bottom-0 flex w-full flex-col justify-end overflow-hidden bg-foreground pt-12 pb-4 text-background ${gutterClass}`}
@@ -52,41 +57,20 @@ export default function Footer() {
       <div className="relative mb-12">
         <Grid inset={false} className="gap-y-6">
           {footerColumns.map((column) => (
-            <Fragment key={column.title}>
-              <div className={`${column.className} flex flex-col`}>
-                <h6 className="mb-4 text-[15px] font-medium tracking-tight text-background">
-                  {column.title}
-                </h6>
-                <LinkList links={column.links} />
-                {/* Below md the overflow hangs off the end of its own column;
-                    mt-2 matches the list's own spacing so it reads as one. */}
-                {column.moreLinks && (
-                  <div className="mt-2 md:hidden">
-                    <LinkList links={column.moreLinks} />
-                  </div>
-                )}
-              </div>
-
-              {column.moreLinks && (
-                <div className={`${column.moreClassName} flex-col`}>
-                  {/* A continuation of the column beside it, so no heading of
-                      its own — only the space one would take, which keeps the
-                      two lists on the same line. */}
-                  <h6
-                    aria-hidden
-                    className="mb-4 text-[15px] font-medium tracking-tight text-background"
-                  >
-                    &nbsp;
-                  </h6>
-                  <LinkList links={column.moreLinks} />
-                </div>
-              )}
-            </Fragment>
+            <div
+              key={column.title}
+              className={`${column.className} flex flex-col`}
+            >
+              <h6 className="mb-4 text-[15px] font-medium tracking-tight text-background">
+                {column.title}
+              </h6>
+              <LinkList links={column.links} />
+            </div>
           ))}
 
-          {/* Contact sits in the last three columns on desktop and drops to its
+          {/* Contact sits in columns 7–9 on desktop and drops to its
               own full-width row below md, where the grid is only two wide. */}
-          <div className="col-span-12 col-start-1 flex flex-col md:col-span-3 md:col-start-9">
+          <div className="col-span-12 col-start-1 flex flex-col md:col-span-3 md:col-start-7">
             <h6 className="mb-4 text-[15px] font-medium tracking-tight text-background">
               Contact
             </h6>
@@ -99,6 +83,11 @@ export default function Footer() {
         <div className="text-[13px] text-background/40">
           &copy; {new Date().getFullYear()} AGORA.MCP
         </div>
+        {version && (
+          <div className="text-center text-[11px] text-background/40 md:text-left">
+            {version}
+          </div>
+        )}
         <div className="text-center text-[11px] text-background/40 md:text-left">
           created by{" "}
           <Link

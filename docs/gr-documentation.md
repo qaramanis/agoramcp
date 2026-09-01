@@ -8,6 +8,37 @@ source — parameters, return shapes, upstream quirks, measured examples — is 
 |---|---|
 | **Country server** | `/gr/mcp` — every source below in one server, tools prefixed with the source that answers them: `diavgeia_get_decision` |
 | **Per-source servers** | `/gr/mcp/{source}` — the same tools under their plain names: `get_decision` |
+| **HTTP API** | `/gr/api/{source}/{tool}` — the same tools over a plain GET or POST, no MCP client needed: `/gr/api/diavgeia/get_decision?ada=…` |
+
+## Δήμος Αθηναίων — `athens`
+
+The City of Athens open-data portal: 460+ datasets on the city — daily WiFi
+visitor counts per neighbourhood, environmental sensors, parks, GIS layers —
+with the tables queryable in place. The same seven tools as data.gov.gr. Full
+reference: [`packages/sources/gr/athens/DOCUMENTATION.md`](../packages/sources/gr/athens/DOCUMENTATION.md).
+
+- `search_datasets`: find the city's datasets by words, unit, tag, format or EU theme
+- `get_dataset`: one dataset in full — description, unit, and every file or service it carries
+- `list_organizations`: the city units that publish, with how many datasets each has
+- `list_tags`: find the exact spelling of a tag
+- `list_facets`: how many datasets there are per format, theme, update frequency or type
+- `query_resource`: filter and read the rows of a table the portal holds — the WiFi and sensor series
+- `read_resource`: read a GeoJSON or CSV layer from the city's map server
+
+## data.gov.gr — `datagov`
+
+The national open-data catalogue: 22,000+ datasets from 370 bodies, each with
+its publisher, licence and files, and the rows of the uploaded tables queryable
+in place. Full reference:
+[`packages/sources/gr/datagov/DOCUMENTATION.md`](../packages/sources/gr/datagov/DOCUMENTATION.md).
+
+- `search_datasets`: find datasets by words, publishing body, tag, format, licence or EU theme
+- `get_dataset`: one dataset in full — description, publisher, licence, and every file or service it carries
+- `list_organizations`: the bodies that publish on the catalogue, with how many datasets each has
+- `list_tags`: find the exact spelling of a tag
+- `list_facets`: how many datasets there are per licence, format, theme, update frequency or type
+- `query_resource`: filter and read the rows of a table the portal holds in its datastore
+- `read_resource`: read a CSV or JSON file the portal links to, when it is not in the datastore
 
 ## Διαύγεια — `diavgeia`
 
@@ -32,6 +63,36 @@ they take effect. Full reference:
 - `list_thematic_categories`: all thematic categories with their codes
 - `list_dictionaries`: the vocabularies Διαύγεια publishes — CPV codes, body categories, regions and municipalities, and the rest
 - `search_dictionary`: look up a code, or find codes by word, in one vocabulary
+
+## ΚΗΜΔΗΣ — `kimdis`
+
+The registry of public contracts: every public purchase at each step — the
+request, the tender notice, the signed contract, the payment order — with
+amounts, CPV codes and the signed PDF. Full reference:
+[`packages/sources/gr/kimdis/DOCUMENTATION.md`](../packages/sources/gr/kimdis/DOCUMENTATION.md).
+
+- `search_requests`: find the requests with which bodies start a purchase — what they mean to buy, and for how much
+- `search_notices`: find tender notices by CPV, body, title, procedure or deadline — what is out to bid
+- `search_contracts`: find signed contracts — what was bought and what it cost
+- `search_payments`: find payment orders — what was actually paid, and the contract it settles
+- `get_document`: one act in full by its ΑΔΑΜ code, with links to the other acts of the same purchase and to Διαύγεια
+- `get_document_text`: the text of an act's signed PDF — the tender document, the contract, the payment order
+- `search_organizations`: find a buying body by name or VAT number and get its uid — the same uid Διαύγεια uses
+
+## ΜΗΤΟΣ — `mitos`
+
+The National Registry of Administrative Procedures: every procedure a person or
+business can ask the state for — documents, cost, steps, where to go, the law.
+Full reference:
+[`packages/sources/gr/mitos/DOCUMENTATION.md`](../packages/sources/gr/mitos/DOCUMENTATION.md).
+
+- `search_procedures`: find procedures by words, or by life event, audience or owning body
+- `get_procedure`: one procedure in full — documents needed, cost, steps in person and online, deadlines, legal basis
+- `list_life_events`: the life events procedures are filed under, with counts
+- `list_audiences`: who procedures are addressed to — citizens, businesses, students and the rest — with counts
+- `list_recent_procedures`: the procedures whose records changed most recently
+- `search_organizations`: find a body in the procedures registry by name, VAT number or id
+- `get_organization`: a body's registry record — contact details, parent and sub-bodies
 
 ## Test — `test`
 

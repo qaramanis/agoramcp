@@ -20,9 +20,21 @@ importers:
       '@agoramcp/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@agoramcp/source-gr-athens':
+        specifier: workspace:*
+        version: link:../../packages/sources/gr/athens
+      '@agoramcp/source-gr-datagov':
+        specifier: workspace:*
+        version: link:../../packages/sources/gr/datagov
       '@agoramcp/source-gr-diavgeia':
         specifier: workspace:*
         version: link:../../packages/sources/gr/diavgeia
+      '@agoramcp/source-gr-kimdis':
+        specifier: workspace:*
+        version: link:../../packages/sources/gr/kimdis
+      '@agoramcp/source-gr-mitos':
+        specifier: workspace:*
+        version: link:../../packages/sources/gr/mitos
       '@agoramcp/source-gr-test':
         specifier: workspace:*
         version: link:../../packages/sources/gr/test
@@ -104,11 +116,59 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/ckan:
+    dependencies:
+      '@agoramcp/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^4.5.2
+        version: 4.5.2
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.0
+        version: 26.4.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   packages/core:
     dependencies:
       zod:
         specifier: ^4.5.2
         version: 4.5.2
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.0
+        version: 26.4.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/sources/gr/athens:
+    dependencies:
+      '@agoramcp/ckan':
+        specifier: workspace:*
+        version: link:../../../ckan
+      '@agoramcp/core':
+        specifier: workspace:*
+        version: link:../../../core
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.0
+        version: 26.4.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/sources/gr/datagov:
+    dependencies:
+      '@agoramcp/ckan':
+        specifier: workspace:*
+        version: link:../../../ckan
+      '@agoramcp/core':
+        specifier: workspace:*
+        version: link:../../../core
     devDependencies:
       '@types/node':
         specifier: ^26.4.0
@@ -125,6 +185,41 @@ importers:
       unpdf:
         specifier: ^1.8.1
         version: 1.8.1
+      zod:
+        specifier: ^4.5.2
+        version: 4.5.2
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.0
+        version: 26.4.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/sources/gr/kimdis:
+    dependencies:
+      '@agoramcp/core':
+        specifier: workspace:*
+        version: link:../../../core
+      unpdf:
+        specifier: ^1.8.1
+        version: 1.8.1
+      zod:
+        specifier: ^4.5.2
+        version: 4.5.2
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.0
+        version: 26.4.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/sources/gr/mitos:
+    dependencies:
+      '@agoramcp/core':
+        specifier: workspace:*
+        version: link:../../../core
       zod:
         specifier: ^4.5.2
         version: 4.5.2

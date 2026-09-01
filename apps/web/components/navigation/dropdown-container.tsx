@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Code2, LayoutDashboard, Server } from "lucide-react";
 import {
@@ -141,11 +142,7 @@ export default function DropdownContainer({
         <div className="dropdown-content w-[440px] p-2">
           <div className="flex flex-col gap-0.5">
             {features.map((item) => (
-              <PanelRow
-                key={item.title}
-                item={item}
-                onClick={onItemClick}
-              />
+              <PanelRow key={item.title} item={item} onClick={onItemClick} />
             ))}
           </div>
         </div>
@@ -247,15 +244,20 @@ function PanelRow({
   }
 
   return (
-    <Link href={item.url} onClick={() => onClick(item.url)} className={rowClass}>
+    <Link
+      href={item.url}
+      onClick={() => onClick(item.url)}
+      className={rowClass}
+    >
       {content}
     </Link>
   );
 }
 
 /**
- * Bloom uses cover images here. We have no artwork yet, so these are the same
- * card shape rendered with a gradient instead of a broken <Image>.
+ * Bloom uses cover images here and so do we: an abstract under a bottom-up
+ * shade that keeps the copy readable, with the hover of the source squares on
+ * the landing page — grey border turning accent.
  *
  * A card whose page exists is a real link — right-clickable, openable in a new
  * tab. The rest stay buttons that only close the panel, because a placeholder
@@ -265,16 +267,34 @@ function PanelCardButton({
   card,
   onClick,
 }: {
-  card: { title: string; description: string; url: string };
+  card: {
+    title: string;
+    description: string;
+    url: string;
+    image: string;
+    imagePosition?: "bottom";
+  };
   onClick: (href: string) => void;
 }) {
+  // bg-background shows only until the image has loaded.
   const className =
-    "group relative flex-1 cursor-pointer overflow-hidden rounded-md border border-panel-border text-left transition-colors duration-300 hover:border-accent/50";
+    "group relative flex-1 cursor-pointer overflow-hidden rounded-md border border-panel-border bg-background text-left transition-colors duration-300 hover:border-accent/50";
 
   const content = (
     <>
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+      {/* Pre-cropped and encoded, so there is nothing for Next to optimise. */}
+      <Image
+        src={card.image}
+        alt=""
+        fill
+        unoptimized
+        className={`object-cover ${
+          card.imagePosition === "bottom" ? "object-bottom" : ""
+        }`}
+      />
+      {/* Dim and soften the whole photo, heaviest at the bottom where the
+          copy sits; backdrop-blur so the blur cannot bleed past the edges. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 via-60% to-black/30 backdrop-blur-[1px]" />
       <div className="relative flex h-full min-h-[80px] flex-col justify-end p-4">
         <p className="text-[13px] font-semibold tracking-wide text-foreground transition-colors duration-300 group-hover:text-accent">
           {card.title}

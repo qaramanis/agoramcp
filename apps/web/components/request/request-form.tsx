@@ -30,10 +30,14 @@ export default function RequestForm({
   const country = countries.find((item) => item.code === code) ?? null;
 
   // Nothing to send without a country, and nothing to ask for one already served.
-  const disabled = unavailable !== null || !country || country.supported || pending;
+  const disabled =
+    unavailable !== null || !country || country.supported || pending;
 
   return (
-    <form action={submit} className="rounded-md border border-panel-border bg-panel p-3">
+    <form
+      action={submit}
+      className="rounded-md border border-panel-border bg-panel p-3"
+    >
       <input type="hidden" name="code" value={code ?? ""} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -43,7 +47,10 @@ export default function RequestForm({
             value={code}
             placeholder="Select a country"
             onChange={setCode}
-            options={countries.map((item) => ({ value: item.code, label: item.name }))}
+            options={countries.map((item) => ({
+              value: item.code,
+              label: item.name,
+            }))}
           />
         </div>
 
@@ -89,7 +96,13 @@ export default function RequestForm({
  * while it is about the selected country; picking another one goes back to
  * the standing the page loaded.
  */
-function Standing({ country, state }: { country: Country; state: RequestState }): ReactNode {
+function Standing({
+  country,
+  state,
+}: {
+  country: Country;
+  state: RequestState;
+}): ReactNode {
   // The name carries the accent, so the line says which country it is about
   // before it is read.
   const name = <span className="text-accent">{country.name}</span>;
@@ -97,21 +110,37 @@ function Standing({ country, state }: { country: Country; state: RequestState })
   if (state.kind !== "idle" && state.code === country.code) {
     switch (state.kind) {
       case "created":
-        return <>Thanks — {name} has now been requested {times(state.requests)}</>;
+        return (
+          <>
+            Thank you! {name} has now been requested {times(state.requests)}
+          </>
+        );
       case "duplicate":
-        return <>You have already asked for {name}; it has been requested {times(state.requests)}</>;
+        return (
+          <>
+            You have already asked for {name}; it has been requested{" "}
+            {times(state.requests)}
+          </>
+        );
       case "supported":
         return <>{name} is already supported</>;
       case "unknown":
         return <>{name} is not a country a request can be filed for</>;
       case "error":
-        return <>The request for {name} could not be sent. Try again in a moment</>;
+        return (
+          <>The request for {name} could not be sent. Try again in a moment</>
+        );
     }
   }
 
   if (country.supported) return <>{name} is already supported</>;
-  if (country.requests === 0) return <>{name} has not been requested yet. Be the first!</>;
-  return <>{name} has already been requested {times(country.requests)}</>;
+  if (country.requests === 0)
+    return <>{name} has not been requested yet. Be the first!</>;
+  return (
+    <>
+      {name} has been requested {times(country.requests)} this far
+    </>
+  );
 }
 
 function times(count: number): string {

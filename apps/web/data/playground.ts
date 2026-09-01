@@ -70,6 +70,8 @@ export type PropertySchema = {
   pattern?: string;
   minimum?: number;
   maximum?: number;
+  minLength?: number;
+  maxLength?: number;
 };
 
 export type InputSchema = {
@@ -78,7 +80,7 @@ export type InputSchema = {
 };
 
 /** How the sources spell a calendar date in their schemas; a match gets a date picker. */
-const DATE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}$";
+export const DATE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}$";
 
 /**
  * One editable field per schema property, in schema order. The kind comes

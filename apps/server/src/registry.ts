@@ -3,10 +3,15 @@ import {
   qualifiedToolName,
   sourceKey,
   toolPrefix,
+  type AnySourceTool,
   type Bundle,
   type Source,
 } from "@agoramcp/core";
+import { athensSource } from "@agoramcp/source-gr-athens";
+import { datagovSource } from "@agoramcp/source-gr-datagov";
 import { diavgeiaSource } from "@agoramcp/source-gr-diavgeia";
+import { kimdisSource } from "@agoramcp/source-gr-kimdis";
+import { mitosSource } from "@agoramcp/source-gr-mitos";
 import { testSource } from "@agoramcp/source-gr-test";
 import { z } from "zod";
 
@@ -15,7 +20,7 @@ import { z } from "zod";
  * `packages/sources/{country}/{id}`, add it to this app's dependencies, and
  * import it here. The server itself needs no changes.
  */
-const SOURCES: readonly Source[] = [diavgeiaSource, testSource];
+const SOURCES: readonly Source[] = [athensSource, datagovSource, diavgeiaSource, kimdisSource, mitosSource, testSource];
 
 /**
  * Sources that stay off their country's server. Membership is otherwise
@@ -87,29 +92,60 @@ export function buildBundles(
 }
 
 /**
- * Shape returned by `GET /` — what the landing page renders. Each tool carries
- * its input schema and its example, so the live console can build a form for
- * a tool nobody has told it about: a tool is described once, in its source.
+ * The two address families, built in one place so a mount and the description
+ * of that mount cannot disagree. MCP stops at the source — the tool is chosen
+ * inside the session — where the API goes one segment further.
  */
-export function describeRegistry(registry: Registry) {
-  return [...registry.entries()].map(([key, source]) => ({
-    key,
+export function mcpPath(country: string, source?: string): string {
+  return source ? `/${country}/mcp/${source}` : `/${country}/mcp`;
+}
+
+export function apiPath(country: string, source?: string, tool?: string): string {
+  if (!source) return `/${country}/api`;
+  return tool ? `/${country}/api/${source}/${tool}` : `/${country}/api/${source}`;
+}
+
+/** The provenance every description of a source carries, wherever it is served from. */
+export function describeSourceMeta(source: Source) {
+  return {
     country: source.country,
     id: source.id,
     name: source.meta.name,
     description: source.meta.description,
-    endpoint: `/${key.replace("/", "/mcp/")}`,
     publisher: source.meta.publisher,
     license: source.meta.license,
     attribution: source.meta.attribution,
     upstreamUrl: source.meta.upstreamUrl,
-    tools: source.tools.map((tool) => ({
-      name: tool.name,
-      title: tool.title,
-      description: tool.description,
-      inputSchema: z.toJSONSchema(z.object(tool.inputSchema)),
-      example: tool.example ?? {},
-    })),
+  };
+}
+
+/**
+ * One tool as a client can act on it: the schema to build a form or a query
+ * string from, and the example to start on. A tool is described once, in its
+ * source; this is that description on the wire.
+ */
+export function describeTool(tool: AnySourceTool) {
+  return {
+    name: tool.name,
+    title: tool.title,
+    description: tool.description,
+    inputSchema: z.toJSONSchema(z.object(tool.inputSchema)),
+    example: tool.example ?? {},
+  };
+}
+
+/**
+ * Shape returned by `GET /` — what the landing page renders. Each source names
+ * both its MCP mount (`endpoint`) and its API root (`api`), so a reader of the
+ * catalogue can reach a tool either way without a second lookup.
+ */
+export function describeRegistry(registry: Registry) {
+  return [...registry.entries()].map(([key, source]) => ({
+    key,
+    ...describeSourceMeta(source),
+    endpoint: mcpPath(source.country, source.id),
+    api: apiPath(source.country, source.id),
+    tools: source.tools.map(describeTool),
   }));
 }
 
@@ -123,7 +159,8 @@ export function describeBundles(bundles: Bundles) {
     country: bundle.country,
     name: bundle.meta.name,
     description: bundle.meta.description,
-    endpoint: `/${bundle.country}/mcp`,
+    endpoint: mcpPath(bundle.country),
+    api: apiPath(bundle.country),
     sources: bundle.sources.map((source) => ({
       id: source.id,
       name: source.meta.name,

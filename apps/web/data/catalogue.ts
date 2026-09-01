@@ -3,50 +3,16 @@ import { greeklish } from "./greeklish";
 import {
   fieldsFor,
   firstSentence,
-  type InputSchema,
   type PlaygroundCountry,
   type PlaygroundProvider,
 } from "./playground";
+import { fetchRegistry, type Registry, type RegistrySource } from "./registry";
 
 /**
- * The playground's catalogue, read off the MCP server's `GET /`. Server-side
- * only: the browser gets the result as props, never the server's address.
+ * The playground's catalogue: the registry (`data/registry.ts`) shaped into
+ * forms — one field per schema property, prefilled from the tool's example.
+ * Server-side only: the browser gets the result as props.
  */
-
-/** Loopback in dev; a private address once the server is deployed. */
-export const MCP_SERVER_URL = process.env.MCP_SERVER_URL ?? "http://127.0.0.1:3000";
-
-/**
- * How stale the tool list may be. A new source is one server restart away, not
- * one page view, so a minute between reads costs nothing anyone will notice.
- */
-const REVALIDATE_SECONDS = 60;
-
-/** What `describeRegistry` and `describeBundles` put on the wire. */
-type RegistryTool = {
-  name: string;
-  title: string;
-  description: string;
-  inputSchema?: InputSchema;
-  example?: Record<string, unknown>;
-};
-
-type RegistrySource = {
-  country: string;
-  id: string;
-  name: string;
-  endpoint: string;
-  publisher: string;
-  license: string;
-  attribution: string;
-  upstreamUrl: string;
-  tools: RegistryTool[];
-};
-
-type Registry = {
-  countries?: { country: string; name: string }[];
-  sources?: RegistrySource[];
-};
 
 export type Catalogue = {
   countries: PlaygroundCountry[];
@@ -55,22 +21,9 @@ export type Catalogue = {
 };
 
 export async function loadCatalogue(): Promise<Catalogue> {
-  let registry: Registry;
-
-  try {
-    const response = await fetch(`${MCP_SERVER_URL}/`, {
-      headers: { accept: "application/json" },
-      next: { revalidate: REVALIDATE_SECONDS },
-    });
-    if (!response.ok) {
-      return { countries: [], unavailable: `The MCP server answered ${response.status}.` };
-    }
-    registry = (await response.json()) as Registry;
-  } catch {
-    return { countries: [], unavailable: "The MCP server could not be reached." };
-  }
-
-  return { countries: toCountries(registry), unavailable: null };
+  const result = await fetchRegistry();
+  if (result.registry === null) return { countries: [], unavailable: result.unavailable };
+  return { countries: toCountries(result.registry), unavailable: null };
 }
 
 /**

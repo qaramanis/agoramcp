@@ -10,7 +10,11 @@
   },
   "dependencies": {
     "@agoramcp/core": "workspace:*",
+    "@agoramcp/source-gr-athens": "workspace:*",
+    "@agoramcp/source-gr-datagov": "workspace:*",
     "@agoramcp/source-gr-diavgeia": "workspace:*",
+    "@agoramcp/source-gr-kimdis": "workspace:*",
+    "@agoramcp/source-gr-mitos": "workspace:*",
     "@agoramcp/source-gr-test": "workspace:*",
     "@hono/mcp": "^0.3.2",
     "@hono/node-server": "^2.1.1",

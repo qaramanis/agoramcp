@@ -1,4 +1,5 @@
-import { loadCatalogue, MCP_SERVER_URL } from "@/data/catalogue";
+import { loadCatalogue } from "@/data/catalogue";
+import { MCP_SERVER_URL } from "@/data/registry";
 import { buildArguments, providerByEndpoint } from "@/data/playground";
 
 /**

@@ -71,3 +71,24 @@ export async function createRequest(code: string, requesterHash: string): Promis
 
   return { kind: inserted.length > 0 ? "created" : "duplicate", requests: count?.requests ?? 0 };
 }
+
+/**
+ * The version last recorded by `pnpm db:version` — `v.1.{countries}.{commits}`,
+ * composed by the table itself — or null before the first run.
+ */
+export async function latestVersion(): Promise<string | null> {
+  const sql = db();
+  const [row] = await sql<{ version: string }[]>`
+    select version from versions order by id desc limit 1`;
+  return row?.version ?? null;
+}
+
+/** The footer's read: no row yet, or no database, is no version — not a crash. */
+export async function loadVersion(): Promise<string | null> {
+  try {
+    return await latestVersion();
+  } catch (error) {
+    console.error("version: database unavailable", error);
+    return null;
+  }
+}

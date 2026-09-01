@@ -69,7 +69,7 @@ export default function Hero() {
         </p>
         <div className="col-span-12 mt-6 flex flex-wrap items-center gap-3 md:col-span-5">
           <Link
-            href="#"
+            href="/quickstart"
             className="w-fit rounded-md bg-accent px-6 py-3 text-[12px] font-medium text-background transition-opacity duration-300 hover:opacity-90"
           >
             Get started

@@ -1,13 +1,15 @@
 import { StreamableHTTPTransport } from "@hono/mcp";
-import { createLogger, createMemoryCache } from "@agoramcp/core";
+import { NotFoundError, createLogger, createMemoryCache } from "@agoramcp/core";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { apiError, describeCountryApi, describeSourceApi, findTool, handleToolCall } from "./api.ts";
+import type { ToolDeps } from "./call.ts";
 import { loadConfig } from "./config.ts";
-import { createBundleServer, createSourceServer, SERVER_VERSION, type McpServerDeps } from "./mcp.ts";
+import { createBundleServer, createSourceServer, SERVER_VERSION } from "./mcp.ts";
 import { requestLogger } from "./middleware/logging.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
-import { buildBundles, buildRegistry, describeBundles, describeRegistry } from "./registry.ts";
+import { apiPath, buildBundles, buildRegistry, describeBundles, describeRegistry } from "./registry.ts";
 
 const config = loadConfig();
 const logger = createLogger({ level: config.logLevel, base: { service: "agoramcp" } });
@@ -15,7 +17,7 @@ const cache = createMemoryCache({ maxEntries: config.cacheMaxEntries });
 const registry = buildRegistry();
 const bundles = buildBundles(registry);
 
-const deps: McpServerDeps = { cache, logger, env: process.env };
+const deps: ToolDeps = { cache, logger, env: process.env };
 
 const app = new Hono();
 
@@ -52,6 +54,22 @@ if (limiter) {
   app.use("/:country/mcp/:source", limiter);
 }
 
+// The API's budget stops at the source, like the MCP mounts', so a script
+// gets one allowance per registry rather than one per tool it happens to use.
+const apiLimiter = createRateLimiter(config.rateLimitPerMinute, {
+  scope: (c) => apiPath(c.req.param("country") ?? "", c.req.param("source") ?? ""),
+  message: {
+    error: {
+      code: "rate_limited",
+      message: "Rate limit exceeded for this source. Try again in a minute.",
+      retryable: true,
+    },
+  },
+});
+if (apiLimiter) {
+  app.use("/:country/api/:source/:tool", apiLimiter);
+}
+
 app.all("/:country/mcp/:source", async (c) => {
   const key = `${c.req.param("country")}/${c.req.param("source")}`;
   const source = registry.get(key);
@@ -73,6 +91,53 @@ app.all("/:country/mcp", async (c) => {
   if (!bundle) return notMounted(c, "country", country);
 
   return runServer(c, country, createBundleServer(bundle, deps));
+});
+
+/**
+ * The HTTP API, beside the MCP mounts and over the same tools. Two index
+ * levels so the address describes itself, then the call. `api.ts` owns the
+ * shapes; these routes only resolve the address.
+ */
+app.get("/:country/api", (c) => {
+  const country = c.req.param("country");
+  const body = describeCountryApi(country, registry);
+
+  if (!body) return apiError(c, new NotFoundError(`No country mounted at "${country}".`));
+
+  return c.json(body);
+});
+
+app.get("/:country/api/:source", (c) => {
+  const key = `${c.req.param("country")}/${c.req.param("source")}`;
+  const source = registry.get(key);
+
+  if (!source) return apiError(c, new NotFoundError(`No source mounted at "${key}".`));
+
+  return c.json(describeSourceApi(source));
+});
+
+app.on(["GET", "POST"], "/:country/api/:source/:tool", async (c) => {
+  const found = findTool(registry, c.req.param("country"), c.req.param("source"), c.req.param("tool"));
+
+  if (found instanceof NotFoundError) return apiError(c, found);
+
+  return handleToolCall(c, found.source, found.tool, deps);
+});
+
+// Anything but the two verbs above: say which verbs there are, as JSON like
+// every other answer on this path, rather than the framework's bare 404.
+app.all("/:country/api/:source/:tool", (c) => {
+  c.header("allow", "GET, POST");
+  return c.json(
+    {
+      error: {
+        code: "method_not_allowed",
+        message: "Use GET with query parameters, or POST with a JSON body.",
+        retryable: false,
+      },
+    },
+    405,
+  );
 });
 
 /**

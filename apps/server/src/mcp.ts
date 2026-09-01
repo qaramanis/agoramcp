@@ -1,33 +1,22 @@
 import {
-  MissingCredentialsError,
-  missingEnv,
   qualifiedToolName,
-  sourceKey,
   toolErrorMessage,
   toolPrefix,
-  ttlFor,
   type AnySourceTool,
   type Bundle,
-  type Cache,
-  type Logger,
   type Source,
 } from "@agoramcp/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { callTool, type ToolDeps } from "./call.ts";
 
 export const SERVER_VERSION = "0.1.0";
-
-export interface McpServerDeps {
-  cache: Cache;
-  logger: Logger;
-  env: Readonly<Partial<Record<string, string>>>;
-}
 
 /**
  * Wraps one `Source` in an MCP server. Called per request: the transport is
  * stateless, so a fresh instance keeps concurrent callers isolated.
  */
-export function createSourceServer(source: Source, deps: McpServerDeps): McpServer {
+export function createSourceServer(source: Source, deps: ToolDeps): McpServer {
   const server = new McpServer(
     { name: `agoramcp-${source.country}-${source.id}`, title: source.meta.name, version: SERVER_VERSION },
     { capabilities: { tools: {} }, instructions: sourceInstructions(source) },
@@ -46,7 +35,7 @@ export function createSourceServer(source: Source, deps: McpServerDeps): McpServ
  * are registered under `{source}_{tool}`, because tool names are unique only
  * within a source and a bundle puts several side by side.
  */
-export function createBundleServer(bundle: Bundle, deps: McpServerDeps): McpServer {
+export function createBundleServer(bundle: Bundle, deps: ToolDeps): McpServer {
   const server = new McpServer(
     { name: `agoramcp-${bundle.country}`, title: bundle.meta.name, version: SERVER_VERSION },
     { capabilities: { tools: {} }, instructions: bundleInstructions(bundle) },
@@ -62,19 +51,18 @@ export function createBundleServer(bundle: Bundle, deps: McpServerDeps): McpServ
 }
 
 /**
- * Registers one tool under the name this server calls it by. The handler is
- * the source's own, so a bundled tool and a per-source tool run identical code
- * and resolve their TTL and credentials from the same `meta`.
+ * Registers one tool under the name this server calls it by. The SDK has
+ * validated the input against `inputSchema` by the time the handler runs, and
+ * `callTool` is the same path the HTTP API takes, so a bundled tool, a
+ * per-source tool and an API call all run identical code.
  */
 function register(
   server: McpServer,
   source: Source,
   tool: AnySourceTool,
   name: string,
-  deps: McpServerDeps,
+  deps: ToolDeps,
 ): void {
-  const key = sourceKey(source);
-
   server.registerTool(
     name,
     {
@@ -84,25 +72,10 @@ function register(
       ...(tool.annotations ? { annotations: { title: tool.title, ...tool.annotations } } : {}),
     },
     async (input: Record<string, unknown>, extra: { signal: AbortSignal }): Promise<CallToolResult> => {
-      const logger = deps.logger.child({ source: key, tool: tool.name });
-      const startedAt = Date.now();
-
       try {
-        const missing = missingEnv(source.meta, deps.env);
-        if (missing.length > 0) throw new MissingCredentialsError(missing);
-
-        const data = await tool.handler(input, {
-          cache: deps.cache,
-          logger,
-          ttl: ttlFor(source.meta, tool.name),
-          signal: extra.signal,
-          env: deps.env,
-        });
-
-        logger.info("tool.ok", { durationMs: Date.now() - startedAt });
+        const data = await callTool(source, tool, input, deps, extra.signal);
         return { content: [{ type: "text", text: render(data) }] };
       } catch (error) {
-        logger.warn("tool.failed", { durationMs: Date.now() - startedAt, error });
         // Tool-level errors belong in the result, not the JSON-RPC envelope:
         // the model should see them and be able to correct its arguments.
         return { content: [{ type: "text", text: toolErrorMessage(error) }], isError: true };

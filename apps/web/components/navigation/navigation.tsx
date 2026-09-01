@@ -35,7 +35,7 @@ export default function Navigation() {
 
       <div className="pointer-events-auto flex items-center gap-2">
         <Link
-          href="#"
+          href="/quickstart"
           className={`hidden h-7 cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 px-4 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-all duration-300 hover:bg-accent/30 md:flex ${
             isScrolled ? "md:pointer-events-none md:opacity-0" : "md:opacity-100"
           }`}

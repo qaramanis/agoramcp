@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
-import { columnGapClass, Grid, gutterClass } from "@/components/layout/grid";
+import { Grid, gutterClass } from "@/components/layout/grid";
 import AgentGuide from "@/components/mcp/agent-guide";
 import AgentPicker from "@/components/mcp/agent-picker";
+import Block from "@/components/mcp/block";
 import CodeBlock from "@/components/mcp/code-block";
 import { Code } from "@/components/mcp/inline";
 import { agents } from "@/data/agents";
@@ -83,32 +83,5 @@ export default function QuickstartPage() {
         )}
       </Grid>
     </main>
-  );
-}
-
-/** A titled step: label, optional gloss, then the block being handed over. */
-function Block({
-  title,
-  note,
-  children,
-}: {
-  title: string;
-  note?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className={`grid grid-cols-8 ${columnGapClass}`}>
-      <p className="col-span-8 col-start-1 text-[12px] text-foreground">
-        {title}
-      </p>
-
-      {note && (
-        <p className="col-span-8 col-start-1 mt-1.5 text-[12px] leading-relaxed text-muted-foreground md:col-span-6">
-          {note}
-        </p>
-      )}
-
-      <div className="col-span-8 col-start-1 mt-2">{children}</div>
-    </div>
   );
 }

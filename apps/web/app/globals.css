@@ -1,82 +1,83 @@
 @import "tailwindcss";
 
 :root {
-  --radius: 0.625rem;
-  /* The site is dark-only, so native controls — date pickers, dropdowns,
+    --radius: 0.625rem;
+    /* The site is dark-only, so native controls — date pickers, dropdowns,
      scrollbars — should be told that rather than rendering in the OS's light
      palette on top of it. */
-  color-scheme: dark;
+    color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: #0a0a0a;
-  --color-foreground: #c8c8c8;
-  --color-panel: #141414;
-  --color-panel-border: #2a2a2a;
-  --color-panel-header: #111111;
-  --color-muted: #525252;
-  --color-muted-foreground: #a3a3a3;
+    --color-background: #0a0a0a;
+    --color-foreground: #c8c8c8;
+    --color-panel: #141414;
+    --color-panel-border: #2a2a2a;
+    --color-panel-header: #111111;
+    --color-muted: #525252;
+    --color-muted-foreground: #a3a3a3;
+    --color-muted-background: #525252;
 
-  /* Single accent, so re-theming the site is a one-line change. */
-  --color-accent: #4ade80;
+    /* Single accent, so re-theming the site is a one-line change. */
+    --color-accent: #4ade80;
 
-  /* Syntax colours for the live playground's panes. Deliberately two content
+    /* Syntax colours for the live playground's panes. Deliberately two content
      hues against the greys — a full rainbow theme would pull the page away
      from the single-accent identity the rest of the site keeps. */
-  --color-code-key: #a3a3a3;
-  --color-code-string: #4ade80;
-  --color-code-scalar: #7dd3fc;
+    --color-code-key: #a3a3a3;
+    --color-code-string: #4ade80;
+    --color-code-scalar: #7dd3fc;
 
-  /* Semantic, and deliberately not the accent: a failed call must not read as
+    /* Semantic, and deliberately not the accent: a failed call must not read as
      a successful one at a glance. */
-  --color-warn: #e0a458;
+    --color-warn: #e0a458;
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-jetbrains-mono);
+    --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-jetbrains-mono);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
 }
 
 * {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(42, 42, 42, 0.7) transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(42, 42, 42, 0.7) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+    width: 6px;
+    height: 6px;
 }
 
 *::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(42, 42, 42, 0.7);
-  border-radius: 3px;
+    background: rgba(42, 42, 42, 0.7);
+    border-radius: 3px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(58, 58, 58, 0.8);
+    background: rgba(58, 58, 58, 0.8);
 }
 
 /* The /mcp client picker jumps to that client's instructions further down the
    page. Smooth unless the reader has asked for less motion. */
 @media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
+    html {
+        scroll-behavior: smooth;
+    }
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
-  line-height: 1.4;
-  overflow-x: hidden;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-x: hidden;
 }
 
 /* Selection, everywhere. The accent at full strength carrying the page
@@ -84,23 +85,23 @@ body {
    highlight reads as part of the palette instead of the browser's blue. The
    two are ~11:1 apart, which holds up over the light footer as well. */
 ::selection {
-  background: var(--color-accent);
-  color: var(--color-background);
+    background: var(--color-accent);
+    color: var(--color-background);
 }
 
 /* Sweeps the accent across the footer wordmark. */
 @keyframes gradientPulse {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  25% {
-    background-position: 33% 50%;
-  }
-  50% {
-    background-position: 66% 50%;
-  }
-  75% {
-    background-position: 100% 50%;
-  }
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+    25% {
+        background-position: 33% 50%;
+    }
+    50% {
+        background-position: 66% 50%;
+    }
+    75% {
+        background-position: 100% 50%;
+    }
 }

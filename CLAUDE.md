@@ -7,6 +7,8 @@ pnpm workspace monorepo. MCP servers over open government data.
   `/{country}/mcp`, where tool names are prefixed with the source that answers them.
 - `apps/web` — Next.js landing page. Its own `AGENTS.md` applies there, not here.
 - `packages/core` — `Source` interface, HTTP client, cache, errors, logger.
+- `packages/ckan` — the CKAN adapter: tools for any CKAN portal. A CKAN source is
+  this, pointed at one portal, plus its `meta.ts`.
 - `packages/sources/{country}/{id}` — one package per data source.
 
 ## Rules

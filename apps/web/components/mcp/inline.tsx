@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 /** An inline literal — a path, a flag, or a tool name as it goes over the wire. */
 export function Code({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-xs bg-background px-1.5 py-0.5 text-[11px] text-foreground">
+    <span className="rounded-xs bg-muted-background px-1.5 py-0.5 text-[11px] text-foreground">
       {children}
     </span>
   );
@@ -16,9 +16,37 @@ export function Code({ children }: { children: ReactNode }) {
 export function Ticks({ text }: { text: string }) {
   return (
     <>
-      {text.split(/`([^`]+)`/).map((part, index) =>
-        index % 2 === 1 ? <Code key={index}>{part}</Code> : <span key={index}>{part}</span>,
-      )}
+      {text
+        .split(/`([^`]+)`/)
+        .map((part, index) =>
+          index % 2 === 1 ? (
+            <Code key={index}>{part}</Code>
+          ) : (
+            <span key={index}>{part}</span>
+          ),
+        )}
+    </>
+  );
+}
+
+/**
+ * Picks the placeholders out of an address pattern. They carry the accent and
+ * the fixed segments do not, so the line reads as a template rather than as
+ * one more example URL.
+ */
+export function Shape({ pattern }: { pattern: string }) {
+  return (
+    <>
+      {pattern.split(/(\{[a-z]+\})/).map((part, index) => (
+        <span
+          key={index}
+          className={
+            part.startsWith("{") ? "text-accent" : "text-muted-foreground"
+          }
+        >
+          {part}
+        </span>
+      ))}
     </>
   );
 }

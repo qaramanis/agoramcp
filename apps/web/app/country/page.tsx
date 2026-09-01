@@ -23,9 +23,9 @@ export default async function RequestPage() {
       <header className="flex min-h-[70vh] items-center">
         <Grid inset={false} className="w-full">
           <div className="col-span-12 col-start-1 md:col-span-5">
-            <p className="text-[10px] tracking-[0.3em] text-accent uppercase">
+            {/*<p className="text-[10px] tracking-[0.3em] text-accent uppercase">
               Request a country
-            </p>
+            </p>*/}
             <h1 className="mt-4 text-[2.5rem] leading-[1.2] font-medium tracking-tight text-foreground">
               Your country, next.
             </h1>

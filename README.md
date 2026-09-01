@@ -19,6 +19,7 @@ apps/
   web/               landing page (Next.js)
 packages/
   core/              Source interface, HTTP client, cache, errors, logger
+  ckan/              the CKAN adapter — tools for any CKAN portal, pointed at one by a source
   sources/{cc}/{id}/ one package per data source
 ```
 
@@ -42,6 +43,40 @@ npx @modelcontextprotocol/inspector --cli http://localhost:3000/gr/mcp/test \
 and attribution.
 `GET /health` is the liveness probe.
 
+### HTTP API
+
+The same tools, without an MCP client. Every source the server mounts also
+answers at `/{country}/api/{source}/{tool}`, running the identical handler the
+MCP mount runs:
+
+```bash
+curl -G --data-urlencode 'ada=9ΓΓ346ΝΨ2Ν-Β5Τ' \
+  http://localhost:3000/gr/api/diavgeia/get_decision
+```
+
+- `GET` takes the tool's arguments as query parameters. Values are coerced to
+  what the schema declares — `size=5` becomes a number, `includeInactive` on
+  its own means `true`. `POST` takes them as one JSON object instead. Query
+  values must be URL-encoded, as every HTTP library does for you; Node rejects
+  a raw non-ASCII request line before the server sees it, hence curl's
+  `-G --data-urlencode` above.
+- Validation is strict: a parameter the tool does not declare is a `400`, so a
+  typo cannot silently widen a search.
+- The response is an envelope — `source`, `tool`, `publisher`, `license`,
+  `attribution`, `upstreamUrl` — around `data`, the handler's own result. A
+  stateless request has to carry the attribution every time; an MCP session is
+  told once.
+- Errors are `{ "error": { "code", "message", "retryable", "details"? } }` with
+  the `AgoraError`'s own HTTP status: `invalid_input` 400, `not_found` 404,
+  `rate_limited` 429, `upstream_error` 502, `upstream_unavailable` and
+  `missing_credentials` 503, `upstream_timeout` 504. Verbs other than GET and
+  POST get a 405.
+- `GET /{country}/api` lists the country's sources and where each tool answers;
+  `GET /{country}/api/{source}` adds every tool's input schema and example.
+- Successful GETs carry `Cache-Control: max-age` equal to the tool's cache TTL.
+  The rate limit is the same as the MCP mounts' — per client, per source — and
+  is reported in `RateLimit-*` headers.
+
 Every tool a country exposes is listed, one line each, in
 `docs/{country}-documentation.md` — [`docs/gr-documentation.md`](docs/gr-documentation.md)
 for Greece. Each source's own `DOCUMENTATION.md` is the full reference.
@@ -58,14 +93,24 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
    Next.js is detected. Add the variables below, deploy.
 2. **Again for the server.** Root Directory `apps/server`. Hono is detected
    from `src/index.ts`, which imports `hono` and default-exports the app, and
-   runs on Fluid compute. There is no build command; Vercel compiles and
-   bundles the TypeScript entry itself.
+   runs on Fluid compute. There is no build command, but the server project
+   **must** set `VERCEL_EXPERIMENTAL_BACKENDS=1` (see below): Vercel's default
+   Hono pipeline transpiles each `.ts` file to `.js` one at a time without
+   rewriting imports, so the emitted `index.js` still asks for `./config.ts`
+   and the workspace packages' `exports` still point at `./src/index.ts` —
+   files that no longer exist. The build goes green and the function then
+   dies on its first request with `FUNCTION_INVOCATION_FAILED`. The flag
+   switches the pipeline to esbuild bundling, which resolves both.
 3. **Variables.**
-   - `server`: `CORS_ORIGINS` and any source tokens from `.env.example`.
-     `PORT` and `HOST` do not apply; Vercel owns the listener.
+   - `server`: `VERCEL_EXPERIMENTAL_BACKENDS=1` (required, see step 2), then
+     `CORS_ORIGINS` and any source tokens from `.env.example` as needed.
+     `PORT` and `HOST` do not apply; Vercel owns the listener, and a
+     non-integer `PORT`, `RATE_LIMIT_PER_MINUTE` or `CACHE_MAX_ENTRIES` throws
+     at load.
    - `web`: `NEXT_PUBLIC_MCP_BASE_URL` and `MCP_SERVER_URL`, both the server
      project's production URL. The first is inlined at build time, so redeploy
-     `web` if that URL ever changes.
+     `web` if that URL ever changes. Plus `DATABASE_URL` (Neon's pooled
+     string) and `REQUEST_HASH_SALT` for `/country` — see [Database](#database).
 
 One dev dependency exists for Vercel's sake: `apps/server` lists `undici-types`
 because Vercel type-checks the entry with a resolver that does not follow
@@ -74,9 +119,12 @@ gives `Response` its members and the build fails on `c.res.status`. The pnpm
 version needs nothing extra — Vercel reads the root `packageManager` pin.
 
 What is different on Vercel: there is no boot, so `warm` never runs. A fresh
-instance fills the Diavgeia register on the first call that needs it and holds
-it for as long as the instance lives, which a lightly used server will feel on
-the first organisation search after a quiet spell. The in-memory rate limiter
+instance fills the Diavgeia register (~19 s, held by Diavgeia and ΚΗΜΔΗΣ
+each), the Mitos facet index (~4 s) and the lists of publishing bodies on
+data.gov.gr (~8 s) and the Athens portal (~3 s) on the first call that needs each and
+holds them for as long as the instance
+lives, which a lightly used server will feel on the first organisation search
+or life-event filter after a quiet spell. The in-memory rate limiter
 counts per instance — keep it as a soft cap, or set `RATE_LIMIT_PER_MINUTE=0`
 and add a Firewall rate-limit rule.
 
@@ -101,6 +149,7 @@ pnpm --filter @agoramcp/web db:reset                # reverse everything
 pnpm --filter @agoramcp/web db:status               # what has run, what has not
 pnpm --filter @agoramcp/web db:make add_x_to_y      # scaffold a new migration
 pnpm --filter @agoramcp/web db:seed                 # every seeder; `db:seed countries` for one
+pnpm --filter @agoramcp/web db:version              # record the version the footer shows
 ```
 
 Each migration runs in a transaction with its own bookkeeping row, so one that
@@ -111,6 +160,13 @@ server session, which Neon's pooler does not promise.
 `db:seed countries` loads the full ISO 3166-1 list from `apps/web/data/countries.ts`
 and marks the countries with a source mounted as supported. It is safe to run
 again: it upserts, and it never unmarks a country.
+
+`db:version` records the version the footer shows, `v.1.{countries}.{commits}`:
+the countries marked supported in the table, and the commits of the checkout
+it runs in — run it after pushing, so the count is the one GitHub shows. The
+table composes the string itself, and a row is only written when the version
+has moved. The site's static pages are regenerated once a minute, so a new
+version is visible within the minute of recording it.
 
 ## Adding a source
 
@@ -137,6 +193,11 @@ per-source code.
 `packages/sources/gr/test` is the reference shape. It has no upstream and exists
 only to prove the transport; delete it once real sources are mounted.
 
+A source over a platform many publishers run — CKAN today — is the shared
+adapter instantiated for one portal: `packages/sources/gr/datagov` is
+`createCkanTools` from `packages/ckan` plus a `meta.ts` and the portal's
+address, licence default and examples. A second CKAN is the same few lines.
+
 ## Configuration
 
 Copy `.env.example` to `.env`. Everything has a working default except the
@@ -147,4 +208,5 @@ message rather than breaking the server.
 
 The code is one thing, the data is another. Every source carries its upstream
 licence and attribution in `meta.ts`; those strings are surfaced in the server's
-MCP instructions and on `GET /`, so attribution travels with the data.
+MCP instructions, on `GET /`, and on every HTTP API response, so attribution
+travels with the data.
