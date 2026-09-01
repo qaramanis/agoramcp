@@ -7,17 +7,29 @@ import type { ReactNode } from "react";
  *
  * `Grid` is the bare row — use it when a block needs to place children on
  * specific columns (the footer does). `Section` is the common case: a page
- * band that centres its content on the middle ten columns.
+ * band whose children are placed on the columns for it, inset by one.
  */
 
 /** Page gutters. Kept here so one edit re-aligns the whole app. */
 export const gutterClass = "px-6 md:px-12 lg:px-20";
 
-/** Column gaps. Deliberately tight — the grid is for alignment, not air. */
-export const gridClass = "grid grid-cols-12 gap-1 md:gap-2 lg:gap-4";
+/**
+ * The column gaps on their own. A block that has to sub-divide itself reuses
+ * these rather than picking its own: given the same gaps and a column count
+ * that divides the block's span, its columns land on the page's columns
+ * exactly. Row spacing is a block's own business — the grid is horizontal.
+ */
+export const columnGapClass = "gap-x-1 md:gap-x-2 lg:gap-x-4";
 
-/** The default content span: ten columns, one column of margin either side. */
-export const contentSpanClass = "col-span-12 md:col-span-12";
+/**
+ * Column gaps. Deliberately tight — the grid is for alignment, not air.
+ *
+ * Columns only: the grid is a horizontal system, and a row gap borrowed from
+ * the column rhythm is the wrong size for every stack that ever lands in one.
+ * A block that wraps onto a second row sets its own `gap-y-*`, which then has
+ * nothing here to conflict with.
+ */
+export const gridClass = `grid grid-cols-12 ${columnGapClass}`;
 
 /**
  * Starts every direct child on column 2. It lives on the parent so children
@@ -49,8 +61,6 @@ interface SectionProps {
   py?: string;
   borderTop?: boolean;
   className?: string;
-  /** Overrides the ten column default when a section needs a different span. */
-  innerClassName?: string;
 }
 
 export default function Section({
@@ -59,7 +69,6 @@ export default function Section({
   py = "py-24",
   borderTop = true,
   className,
-  innerClassName,
 }: SectionProps) {
   return (
     <section
@@ -68,9 +77,10 @@ export default function Section({
         borderTop ? "border-t border-panel-border/50" : ""
       } ${className ?? ""}`}
     >
-      <Grid>
-        <div className={innerClassName ?? contentSpanClass}>{children}</div>
-      </Grid>
+      {/* Children go straight onto the columns rather than into a wrapper:
+          a section's blocks each declare their own span, and the inset rule
+          above starts them all on column 2. */}
+      <Grid>{children}</Grid>
     </section>
   );
 }

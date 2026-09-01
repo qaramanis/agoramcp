@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  countries,
-  type PlaygroundCountry,
-  type PlaygroundProvider,
-  type PlaygroundTool,
+import type {
+  PlaygroundCountry,
+  PlaygroundProvider,
+  PlaygroundTool,
 } from "@/data/playground";
 import Select from "./select";
 
 interface ToolbarProps {
+  countries: PlaygroundCountry[];
   country: PlaygroundCountry | null;
   provider: PlaygroundProvider | null;
   tool: PlaygroundTool | null;
@@ -24,6 +24,7 @@ interface ToolbarProps {
  * choice it is waiting on rather than sitting there greyed and mute.
  */
 export default function Toolbar({
+  countries,
   country,
   provider,
   tool,

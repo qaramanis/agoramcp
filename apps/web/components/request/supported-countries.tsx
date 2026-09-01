@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Grid } from "@/components/layout/grid";
-import { supportedCountries } from "@/data/requests";
+import type { RequestCountry } from "@/data/countries";
 
 /** Columns the list is dealt into, each two of the page's twelve. */
 const COLUMNS = 4;
@@ -15,10 +15,10 @@ const COLUMNS = 4;
  * The panel expands rather than appearing: the row it opens under does not
  * move, so nothing below it jumps.
  */
-export default function SupportedCountries() {
+export default function SupportedCountries({ countries }: { countries: RequestCountry[] }) {
   const [open, setOpen] = useState(false);
 
-  const columns = deal(supportedCountries, COLUMNS);
+  const columns = deal(countries, COLUMNS);
 
   return (
     <div className="mt-3">

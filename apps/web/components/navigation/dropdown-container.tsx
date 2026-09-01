@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { Code2, LayoutDashboard, Server } from "lucide-react";
 import {
@@ -113,23 +113,13 @@ export default function DropdownContainer({
               {productItems.map((item, index) => {
                 const Icon = productIcons[index] ?? Server;
                 return (
-                  <button
+                  <PanelRow
                     key={item.title}
-                    onClick={() => onItemClick(item.url)}
-                    className="group cursor-pointer rounded-md p-3 text-left transition-all duration-300 hover:bg-background"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0">
-                        <Icon size={16} color={item.iconColor} />
-                      </span>
-                      <span className="text-[13px] font-semibold tracking-wide text-foreground transition-colors duration-300 group-hover:text-accent">
-                        {item.title}
-                      </span>
-                    </div>
-                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                      {item.description}
-                    </span>
-                  </button>
+                    item={item}
+                    onClick={onItemClick}
+                    className="p-3"
+                    icon={<Icon size={16} color={item.iconColor} />}
+                  />
                 );
               })}
             </div>
@@ -151,18 +141,11 @@ export default function DropdownContainer({
         <div className="dropdown-content w-[440px] p-2">
           <div className="flex flex-col gap-0.5">
             {features.map((item) => (
-              <button
+              <PanelRow
                 key={item.title}
-                onClick={() => onItemClick(item.url)}
-                className="group cursor-pointer rounded-md p-2.5 text-left transition-all duration-300 hover:bg-background"
-              >
-                <span className="text-[13px] font-semibold tracking-wide text-foreground transition-colors duration-300 group-hover:text-accent">
-                  {item.title}
-                </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {item.description}
-                </span>
-              </button>
+                item={item}
+                onClick={onItemClick}
+              />
             ))}
           </div>
         </div>
@@ -185,18 +168,11 @@ export default function DropdownContainer({
                 </div>
                 <div className="flex flex-col gap-0.5">
                   {country.sources.map((item) => (
-                    <button
+                    <PanelRow
                       key={item.title}
-                      onClick={() => onItemClick(item.url)}
-                      className="group cursor-pointer rounded-md p-2.5 text-left transition-all duration-300 hover:bg-background"
-                    >
-                      <span className="text-[13px] font-semibold tracking-wide text-foreground transition-colors duration-300 group-hover:text-accent">
-                        {item.title}
-                      </span>
-                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                        {item.description}
-                      </span>
-                    </button>
+                      item={item}
+                      onClick={onItemClick}
+                    />
                   ))}
                 </div>
               </div>
@@ -215,6 +191,65 @@ export default function DropdownContainer({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * One title/description row, shared by the product, features, resources and
+ * search lists.
+ *
+ * Same bargain as PanelCardButton: a row whose page exists is a real link, so
+ * it can be middle-clicked and opened in a new tab, and a row that still
+ * points at "#" stays a button that only closes the panel.
+ */
+function PanelRow({
+  item,
+  onClick,
+  icon,
+  className = "p-2.5",
+}: {
+  item: { title: string; description: string; url: string };
+  onClick: (href: string) => void;
+  /** Only the product panel has icons; the other lists are titles alone. */
+  icon?: ReactNode;
+  className?: string;
+}) {
+  const rowClass = `group cursor-pointer rounded-md text-left transition-all duration-300 hover:bg-background ${className}`;
+
+  const title = (
+    <span className="text-[13px] font-semibold tracking-wide text-foreground transition-colors duration-300 group-hover:text-accent">
+      {item.title}
+    </span>
+  );
+
+  const content = (
+    <>
+      {icon ? (
+        <div className="flex items-center gap-2">
+          <span className="shrink-0">{icon}</span>
+          {title}
+        </div>
+      ) : (
+        title
+      )}
+      <span className="mt-0.5 block text-[11px] text-muted-foreground">
+        {item.description}
+      </span>
+    </>
+  );
+
+  if (item.url === "#") {
+    return (
+      <button onClick={() => onClick(item.url)} className={rowClass}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={item.url} onClick={() => onClick(item.url)} className={rowClass}>
+      {content}
+    </Link>
   );
 }
 
@@ -308,18 +343,11 @@ function SearchResults({
           </div>
           <div className="flex flex-col gap-0.5">
             {items.map((item) => (
-              <button
+              <PanelRow
                 key={group + item.title}
-                onClick={() => onItemClick(item.url)}
-                className="group cursor-pointer rounded-md p-2.5 text-left transition-all duration-300 hover:bg-background"
-              >
-                <span className="text-[13px] font-semibold tracking-wide text-foreground transition-colors duration-300 group-hover:text-accent">
-                  {item.title}
-                </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {item.description}
-                </span>
-              </button>
+                item={item}
+                onClick={onItemClick}
+              />
             ))}
           </div>
         </div>

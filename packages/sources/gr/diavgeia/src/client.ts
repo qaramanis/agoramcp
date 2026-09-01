@@ -1,21 +1,21 @@
 import {
   cacheKey,
   createHttpClient,
+  InvalidInputError,
   isAgoraError,
   NotFoundError,
+  UpstreamError,
   withCache,
+  type AgoraError,
   type Cache,
-  type QueryParams,
 } from "@agoramcp/core";
+import { extractText, getDocumentProxy } from "unpdf";
 
 /**
  * The OpenData tree is read-only and unauthenticated. The authenticated half of
  * Diavgeia lives under `/api` and is for publishing bodies — we never touch it.
  */
 export const BASE_URL = "https://diavgeia.gov.gr/opendata/";
-
-/** Upstream caps a page at 500 regardless of what you ask for. */
-export const MAX_UPSTREAM_PAGE_SIZE = 500;
 
 /** The viewable decision page, which upstream never returns in the record. */
 const DECISION_PAGE_PREFIX = "https://diavgeia.gov.gr/decision/view/";
@@ -76,11 +76,24 @@ interface RawExtraFields {
   [key: string]: unknown;
 }
 
+/** One file attached to an act beyond its signed PDF, as the record lists it. */
+interface RawAttachment {
+  id: string;
+  description?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  checksum?: string | null;
+  size?: number | null;
+}
+
 export interface RawDecision {
   ada: string;
   subject: string;
   protocolNumber?: string | null;
-  /** Epoch milliseconds at UTC midnight of the issue date. */
+  /**
+   * Epoch milliseconds at midnight of the issue date — UTC midnight on most
+   * acts, Athens midnight on some. See `toIsoDate`.
+   */
   issueDate: number;
   publishTimestamp: number;
   submissionTimestamp: number;
@@ -96,7 +109,7 @@ export interface RawDecision {
   url: string;
   documentUrl: string;
   documentChecksum?: string | null;
-  attachments?: unknown[] | null;
+  attachments?: RawAttachment[] | null;
   correctedVersionId?: string | null;
 }
 
@@ -198,6 +211,50 @@ interface RawTypesResponse {
   decisionTypes?: RawDecisionType[] | null;
 }
 
+/** One field an act of a given type carries, as `types/{uid}/details.json` describes it. */
+interface RawTypeField {
+  uid: string;
+  label?: string | null;
+  help?: string | null;
+  type?: string | null;
+  required?: boolean | null;
+  multiple?: boolean | null;
+  /** Vocabulary the value is drawn from, e.g. `CPV`. */
+  dictionary?: string | null;
+  fixedValueList?: string[] | null;
+  /** The Lucene field this value is indexed under, or null when it is not searchable. */
+  searchTerm?: string | null;
+}
+
+interface RawTypeDetail extends RawDecisionType {
+  extraFields?: RawTypeField[] | null;
+}
+
+interface RawVersion {
+  versionId: string;
+  /** Internal `{org}_{user}` id of the account that filed it. Not surfaced. */
+  creator?: string | null;
+  versionTimestamp?: number | null;
+  /** Free text the body entered — on a revocation, the reason for it. */
+  description?: string | null;
+  status?: string | null;
+  correctedVersionId?: string | null;
+}
+
+interface RawVersionLog {
+  ada: string;
+  organizationId?: string | null;
+  versions?: RawVersion[] | null;
+}
+
+interface RawSignersResponse {
+  signers?: RawSigner[] | null;
+}
+
+interface RawDictionariesResponse {
+  dictionaries?: { uid: string; label: string }[] | null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Normalised shapes                                                          */
 /* -------------------------------------------------------------------------- */
@@ -275,10 +332,24 @@ export interface DecisionSummary {
   documentUrl: string;
 }
 
+export interface Attachment {
+  id: string;
+  filename: string | null;
+  description: string | null;
+  mimeType: string | null;
+  /** Bytes. */
+  size: number | null;
+  checksum: string | null;
+  /** The file itself. */
+  url: string;
+}
+
 export interface DecisionDetail extends DecisionSummary {
   versionId: string;
   documentChecksum: string | null;
   attachmentCount: number;
+  /** Annexes, tables, the tender document — anything filed alongside the PDF. */
+  attachments: Attachment[];
   /** Set when this act is a correction of an earlier version. */
   correctedVersionId: string | null;
   /** Whether the upstream withheld the body for privacy reasons. */
@@ -295,9 +366,12 @@ export interface DecisionDetail extends DecisionSummary {
 /* Requests                                                                   */
 /* -------------------------------------------------------------------------- */
 
+export type DecisionStatus = "published" | "revoked" | "all";
+
 export interface SearchQuery {
-  subject?: string | undefined;
   text?: string | undefined;
+  subject?: string | undefined;
+  protocolNumber?: string | undefined;
   organizationId?: string | undefined;
   unitId?: string | undefined;
   signerId?: string | undefined;
@@ -305,7 +379,9 @@ export interface SearchQuery {
   thematicCategory?: string | undefined;
   issuedFrom?: string | undefined;
   issuedTo?: string | undefined;
-  includeRevoked?: boolean | undefined;
+  publishedFrom?: string | undefined;
+  publishedTo?: string | undefined;
+  status: DecisionStatus;
   page: number;
   size: number;
 }
@@ -315,36 +391,159 @@ export interface SearchResult {
   decisions: DecisionSummary[];
 }
 
+export interface DayWindow {
+  from: string;
+  to: string;
+}
+
 /**
- * Upstream parameter names are neither guessable nor documented in the portal:
- * `term` is full text, `subject` is the subject line only, and a plain `q` is
- * accepted and then silently ignored. This map is the whole translation layer.
+ * Upstream's hard limit on one search. An `issueDate` range longer than this
+ * is cut to `from + 180 days` without a word — measured, not documented:
+ * 2026-01-01 becomes 2026-06-30 and 2025-07-01 becomes 2025-12-28.
  */
+export const MAX_WINDOW_DAYS = 180;
+
+/** Διαύγεια went live in October 2010; nothing carries an earlier date. */
+export const REGISTER_START = "2010-01-01";
+
+/**
+ * How the index spells status. Records say `PUBLISHED` and `REVOKED`; the
+ * Lucene filter wants the Greek, and the two are not interchangeable.
+ */
+const STATUS_CLAUSE: Record<DecisionStatus, string | null> = {
+  published: 'status:"Αναρτημένη"',
+  revoked: 'status:"Ανακληθείσα"',
+  all: null,
+};
+
+/**
+ * `search.json` and `search/advanced.json` run the same Lucene query, but only
+ * the advanced one lets the caller write the date bounds — and that matters.
+ * The simple endpoint turns `to_issue_date=2026-08-20` into
+ * `TO 2026-08-20T00:00+03:00`, and because most acts carry an issue timestamp
+ * of 03:00 Athens time, that bound excludes nearly the whole day it names: 459
+ * acts matched where 12,164 were issued. Writing `T23:59:59` ourselves is the
+ * only way to make `issuedTo` mean the day it says.
+ *
+ * The simple parameters map one-to-one onto fields (`term` is `q`, `org` is
+ * `organizationUid`, …), verified by comparing totals over the same window.
+ */
+export function buildSearchQuery(query: SearchQuery): string {
+  const clauses: string[] = [];
+  const term = (field: string, value: string | undefined) => {
+    if (value !== undefined) clauses.push(`${field}:${phrase(value)}`);
+  };
+
+  term("q", query.text);
+  term("subject", query.subject);
+  term("protocolNumber", query.protocolNumber);
+  term("organizationUid", query.organizationId);
+  term("unitUid", query.unitId);
+  term("signerUid", query.signerId);
+  term("decisionTypeUid", query.decisionType);
+  term("thematicCategoryUid", query.thematicCategory);
+
+  const issued = issueWindow(query);
+  if (issued) clauses.push(dayRange("issueDate", issued.from, issued.to));
+
+  if (query.publishedFrom !== undefined || query.publishedTo !== undefined) {
+    clauses.push(
+      dayRange(
+        "publishTimestamp",
+        query.publishedFrom ?? REGISTER_START,
+        query.publishedTo ?? todayInAthens(),
+      ),
+    );
+  }
+
+  const status = STATUS_CLAUSE[query.status];
+  if (status) clauses.push(status);
+
+  return clauses.join(" AND ");
+}
+
+/**
+ * The issue-date window to ask for, or null to let upstream apply its own
+ * default of the last 180 days. A Lucene range needs both bounds, so only
+ * `issuedTo` means the 180 days ending there — the widest window upstream
+ * honours, ending where the caller said.
+ */
+export function issueWindow(query: Pick<SearchQuery, "issuedFrom" | "issuedTo">): DayWindow | null {
+  const { issuedFrom, issuedTo } = query;
+  if (issuedFrom !== undefined) return { from: issuedFrom, to: issuedTo ?? todayInAthens() };
+  if (issuedTo !== undefined) return { from: addDays(issuedTo, -MAX_WINDOW_DAYS), to: issuedTo };
+  return null;
+}
+
+/** A quoted Lucene phrase. Only the quote and the backslash need escaping inside one. */
+function phrase(value: string): string {
+  return `"${value.replace(/["\\]/gu, "\\$&")}"`;
+}
+
+/** Whole calendar days, Athens time — the zone upstream reads a bare `DT()` in. */
+function dayRange(field: string, from: string, to: string): string {
+  return `${field}:[DT(${from}T00:00:00) TO DT(${to}T23:59:59)]`;
+}
+
 export async function searchDecisions(
   query: SearchQuery,
   signal: AbortSignal,
 ): Promise<SearchResult> {
-  const params: QueryParams = {
-    size: query.size,
-    page: query.page,
-    subject: query.subject,
-    term: query.text,
-    org: query.organizationId,
-    unit: query.unitId,
-    signer: query.signerId,
-    type: query.decisionType,
-    tag: query.thematicCategory,
-    from_issue_date: query.issuedFrom,
-    to_issue_date: query.issuedTo,
-    // Omitted entirely unless asked for: the upstream default already excludes
-    // revoked acts, and sending the default back changes nothing.
-    ...(query.includeRevoked ? { status: "all" } : {}),
-  };
+  return runSearch(buildSearchQuery(query), query.page, query.size, signal);
+}
 
-  const body = await http.getJson<RawSearchResponse>("search.json", { query: params, signal });
-  const decisions = (body.decisions ?? []).map(toSummary);
+/**
+ * Runs a Lucene query as written. Upstream answers a malformed one with a 400
+ * whose body names the failing position. That is the caller's query to fix,
+ * so it is surfaced as invalid input rather than as an upstream fault, which
+ * would read as "try again".
+ */
+export async function runSearch(
+  q: string,
+  page: number,
+  size: number,
+  signal: AbortSignal,
+): Promise<SearchResult> {
+  let body: RawSearchResponse;
+  try {
+    body = await http.getJson<RawSearchResponse>("search/advanced.json", {
+      query: { q, page, size },
+      signal,
+    });
+  } catch (error) {
+    if (isAgoraError(error) && error.status === 400) {
+      throw new InvalidInputError(
+        `Διαύγεια rejected the query: ${upstreamMessage(error) ?? "syntax error"}`,
+        { cause: error, details: { query: q } },
+      );
+    }
+    throw error;
+  }
 
-  return { info: body.info, decisions };
+  return { info: body.info, decisions: (body.decisions ?? []).map(toSummary) };
+}
+
+/**
+ * The message inside upstream's JSON error envelope. The HTTP client keeps
+ * only the first 500 bytes of a failed body, which is not always a complete
+ * document, so a regex stands in when the parse fails.
+ */
+function upstreamMessage(error: AgoraError): string | null {
+  const body = error.details?.body;
+  if (typeof body !== "string") return null;
+
+  let message: string | null;
+  try {
+    const parsed = JSON.parse(body) as { errors?: { errorMessage?: string | null }[] | null };
+    message = parsed.errors?.[0]?.errorMessage?.trim() || null;
+  } catch {
+    const match = /"errorMessage":"((?:[^"\\]|\\.)*)/u.exec(body);
+    message = match?.[1] ? match[1].replaceAll("\\n", " ").trim() : null;
+  }
+
+  // A parse failure names the grammar rule it died in, forty levels deep. The
+  // position and the caret line after it are what a caller can act on.
+  return message?.replace(/^Error while parsing action '[^']*' /u, "Syntax error ") ?? null;
 }
 
 /** Long: a body's name and VAT number change on the order of years. */
@@ -363,8 +562,25 @@ export async function resolveOrganizations(
   cache: Cache,
   signal: AbortSignal,
 ): Promise<Map<string, Organization>> {
-  const unique = [...new Set(ids)];
   const resolved = new Map<string, Organization>();
+
+  // The held register — filled at boot by `warm` — already names every body,
+  // dissolved ones included. Only what it lacks goes to the per-uid endpoint.
+  const register = await peekRegister(cache);
+  const known = new Map(register?.map((match) => [match.id, match]) ?? []);
+  const unique = [...new Set(ids)].filter((id) => {
+    const match = known.get(id);
+    if (!match) return true;
+    resolved.set(id, {
+      id: match.id,
+      name: match.name,
+      abbreviation: match.abbreviation,
+      vatNumber: match.vatNumber,
+      category: match.category,
+      status: match.status,
+    });
+    return false;
+  });
 
   await Promise.all(
     unique.map(async (id) => {
@@ -438,6 +654,17 @@ export async function fetchDecision(ada: string, signal: AbortSignal): Promise<D
     versionId: raw.versionId,
     documentChecksum: raw.documentChecksum ?? null,
     attachmentCount: raw.attachments?.length ?? 0,
+    attachments: (raw.attachments ?? []).map((attachment) => ({
+      id: attachment.id,
+      filename: blankToNull(attachment.filename),
+      description: blankToNull(attachment.description),
+      mimeType: attachment.mimeType ?? null,
+      size: typeof attachment.size === "number" ? attachment.size : null,
+      checksum: attachment.checksum ?? null,
+      // `attachments/{id}` alone answers with this same metadata; the file is
+      // one segment further down.
+      url: `${BASE_URL}decisions/${encodeURIComponent(raw.ada)}/attachments/${encodeURIComponent(attachment.id)}/document`,
+    })),
     correctedVersionId: raw.correctedVersionId ?? null,
     redacted: raw.privateData === true,
     extraFields: stripReadFields(raw.extraFieldValues),
@@ -447,6 +674,77 @@ export async function fetchDecision(ada: string, signal: AbortSignal): Promise<D
 export async function fetchDecisionTypes(signal: AbortSignal): Promise<RawDecisionType[]> {
   const body = await http.getJson<RawTypesResponse>("types.json", { signal });
   return body.decisionTypes ?? [];
+}
+
+/* -------------------------------------------------------------------------- */
+/* The signed PDF                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Bounded, because an act with scanned annexes can run to hundreds of MB and
+ * would be held in memory whole. Text-bearing acts are a few hundred KB.
+ */
+const MAX_DOCUMENT_BYTES = 30 * 1024 * 1024;
+
+export async function fetchDecisionDocument(ada: string, signal: AbortSignal): Promise<Uint8Array> {
+  const response = await http.request(`decisions/${encodeURIComponent(ada)}/document`, {
+    signal,
+    timeoutMs: 60_000,
+    // The client asks for JSON by default; this endpoint answers that with 406.
+    headers: { accept: "*/*" },
+  });
+
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_DOCUMENT_BYTES) {
+    await response.arrayBuffer().catch(() => undefined);
+    throw tooLarge(ada, declared);
+  }
+
+  // An unknown ΑΔΑ is redirected to the old site rather than refused, and the
+  // client follows redirects — so what came back is checked, not assumed.
+  if (!(response.headers.get("content-type") ?? "").includes("application/pdf")) {
+    await response.arrayBuffer().catch(() => undefined);
+    throw new NotFoundError(`No PDF is published for ΑΔΑ "${ada}".`, { details: { ada } });
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength > MAX_DOCUMENT_BYTES) throw tooLarge(ada, bytes.byteLength);
+  return bytes;
+}
+
+function tooLarge(ada: string, bytes: number): UpstreamError {
+  return new UpstreamError(
+    `The PDF for ΑΔΑ "${ada}" is ${Math.round(bytes / 1_048_576)} MB — too large to read here. It can be downloaded from ${BASE_URL}decisions/${ada}/document.`,
+    { status: 413, details: { ada, bytes } },
+  );
+}
+
+export interface DecisionText {
+  pageCount: number;
+  /** One entry per page, in order, whitespace tidied. Empty where a page has no text layer. */
+  pages: string[];
+}
+
+/** The text layer of a PDF, page by page. A scanned act yields empty pages, not an error. */
+export async function extractDecisionText(bytes: Uint8Array): Promise<DecisionText> {
+  // Quiet: pdf.js reports every oddity in a signed government PDF to the console.
+  const pdf = await getDocumentProxy(bytes, { verbosity: 0 });
+  try {
+    const { totalPages, text } = await extractText(pdf, { mergePages: false });
+    return { pageCount: totalPages, pages: text.map(tidyText) };
+  } finally {
+    // Frees the parsed document and its worker; the proxy has no destroy of its own.
+    await pdf.loadingTask.destroy();
+  }
+}
+
+/** Runs of spaces to one, stray spaces off line ends, blank runs to one blank line. */
+function tidyText(text: string): string {
+  return text
+    .replace(/[ \t\u00a0]+/gu, " ")
+    .replace(/ ?\n ?/gu, "\n")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -587,9 +885,34 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/**
+ * Upstream stamps an issue date at midnight, but not always the same midnight:
+ * most acts carry UTC midnight (03:00 in Athens), a few carry Athens midnight
+ * (21:00 UTC the evening before). Read in UTC the second kind lands on the
+ * wrong day; read in Athens time both land on the day the act was signed.
+ */
+const ATHENS_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Athens",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 function toIsoDate(epochMs: number): string {
-  const iso = toIsoDateTime(epochMs);
-  return iso.slice(0, 10);
+  if (!Number.isFinite(epochMs)) return "unknown";
+  return ATHENS_DAY.format(epochMs);
+}
+
+export function todayInAthens(): string {
+  return ATHENS_DAY.format(Date.now());
+}
+
+/** `YYYY-MM-DD` plus a number of days, on the calendar rather than the clock. */
+export function addDays(day: string, days: number): string {
+  const year = Number(day.slice(0, 4));
+  const month = Number(day.slice(5, 7));
+  const date = Number(day.slice(8, 10));
+  return new Date(Date.UTC(year, month - 1, date + days)).toISOString().slice(0, 10);
 }
 
 function toIsoDateTime(epochMs: number): string {
@@ -631,6 +954,8 @@ export interface OrganizationUnit {
 
 export interface SignerPosting {
   unitId: string;
+  /** Filled in by the tools from the body's unit list; null until then. */
+  unitLabel: string | null;
   positionId: string | null;
   positionLabel: string | null;
   from: string | null;
@@ -666,6 +991,8 @@ export interface OrganizationMatch {
   abbreviation: string | null;
   vatNumber: string | null;
   category: string | null;
+  /** `active`, `inactive` (dissolved or merged) or `pending`. */
+  status: string | null;
   supervisorName: string | null;
 }
 
@@ -673,22 +1000,23 @@ export interface OrganizationMatch {
 export const REGISTER_TTL_SECONDS = 86_400;
 
 /**
- * The whole register in one document: 5,421 active bodies, 2.5 MB, 17-19 s.
+ * The whole register in one document: 5,838 bodies, 2.7 MB, ~19 s.
  *
- * Upstream has no name search — `organizations.json` ignores every filter
- * parameter and returns the lot regardless — so searching by name means holding
- * the register and matching locally. That is only tolerable because it is
- * cached for a day: the first caller of the day waits, everyone after pays
- * nothing.
+ * Upstream has no name search — `organizations.json` honours `status` and
+ * nothing else — so searching by name means holding the register and matching
+ * locally. `status=all` costs the same 19 s as the active bodies alone and adds
+ * the 414 dissolved ones, so it is fetched once for every purpose: the name
+ * search, the inactive-bodies option, and resolving issuers on search pages.
  *
  * The timeout is raised for this one call. Measured at 17-19 s, it sits inside
  * the shared client's 20 s budget by luck rather than by margin.
  */
 export async function fetchOrganizationRegister(signal: AbortSignal): Promise<OrganizationMatch[]> {
   const body = await http.getJson<RawOrganizationsResponse>("organizations.json", {
+    query: { status: "all" },
     signal,
-    timeoutMs: 60_000,
-    // A retry means another 2.5 MB and another 19 s. One attempt is enough.
+    timeoutMs: 90_000,
+    // A retry means another 2.7 MB and another 19 s. One attempt is enough.
     retries: 0,
   });
 
@@ -698,8 +1026,66 @@ export async function fetchOrganizationRegister(signal: AbortSignal): Promise<Or
     abbreviation: raw.abbreviation ?? null,
     vatNumber: raw.vatNumber ?? null,
     category: raw.category ?? null,
+    status: raw.status ?? null,
     supervisorName: raw.supervisorLabel ?? null,
   }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Register cache: held a week, refreshed in the background after a day        */
+/* -------------------------------------------------------------------------- */
+
+const REGISTER_KEY = cacheKey("gr/diavgeia:organization_register", "all");
+
+/**
+ * Far longer than the register is trusted for. The point is that it never
+ * simply expires: a caller who finds it older than a day gets the copy in
+ * hand and triggers a refresh behind them, so the 19 s is paid off the
+ * request path — at boot, by `warm`, and once a day after that.
+ */
+const REGISTER_HOLD_SECONDS = 7 * 86_400;
+
+interface HeldRegister {
+  fetchedAt: number;
+  organizations: OrganizationMatch[];
+}
+
+/** One background refresh at a time, whoever noticed the age first. */
+let refreshing: Promise<void> | null = null;
+
+/** The register, from cache when held, otherwise fetched now. */
+export async function loadRegister(cache: Cache, signal: AbortSignal): Promise<OrganizationMatch[]> {
+  const held = await cache.get<HeldRegister>(REGISTER_KEY);
+  if (held) {
+    if (Date.now() - held.fetchedAt > REGISTER_TTL_SECONDS * 1_000) refreshRegister(cache);
+    return held.organizations;
+  }
+
+  const fresh = await withCache(cache, REGISTER_KEY, REGISTER_HOLD_SECONDS, async () => ({
+    fetchedAt: Date.now(),
+    organizations: await fetchOrganizationRegister(signal),
+  }));
+  return fresh.organizations;
+}
+
+/** The register if it happens to be held; never a fetch. */
+async function peekRegister(cache: Cache): Promise<OrganizationMatch[] | null> {
+  const held = await cache.get<HeldRegister>(REGISTER_KEY);
+  return held?.organizations ?? null;
+}
+
+function refreshRegister(cache: Cache): void {
+  if (refreshing) return;
+  // Its own signal: the request that noticed the age may be long gone.
+  refreshing = fetchOrganizationRegister(AbortSignal.timeout(180_000))
+    .then((organizations) =>
+      cache.set(REGISTER_KEY, { fetchedAt: Date.now(), organizations }, REGISTER_HOLD_SECONDS),
+    )
+    // A failed refresh leaves the held copy in place; the next caller tries again.
+    .catch(() => undefined)
+    .finally(() => {
+      refreshing = null;
+    });
 }
 
 export async function fetchOrganizationDetail(
@@ -741,7 +1127,25 @@ export async function fetchOrganizationUnits(
     { uid },
   );
 
-  return (body.units ?? []).map((raw) => ({
+  return (body.units ?? []).map(toUnit);
+}
+
+/**
+ * One unit by its own uid, without knowing which body it belongs to — which is
+ * the position a reader of `unitIds` on a decision is in.
+ */
+export async function fetchUnit(uid: string, signal: AbortSignal): Promise<OrganizationUnit> {
+  const raw = await getOrNotFound<RawUnit>(
+    `units/${encodeURIComponent(uid)}.json`,
+    signal,
+    `No unit is registered under uid "${uid}". Unit uids come from unitIds on a decision or from list_organization_units.`,
+    { uid },
+  );
+  return toUnit(raw);
+}
+
+function toUnit(raw: RawUnit): OrganizationUnit {
+  return {
     id: raw.uid,
     label: raw.label,
     abbreviation: raw.abbreviation ?? null,
@@ -750,7 +1154,7 @@ export async function fetchOrganizationUnits(
     activeFrom: toOptionalIsoDate(raw.activeFrom),
     activeUntil: toOptionalIsoDate(raw.activeUntil),
     parentId: raw.parentId ?? null,
-  }));
+  };
 }
 
 export async function fetchSigner(uid: string, signal: AbortSignal): Promise<Signer> {
@@ -761,6 +1165,25 @@ export async function fetchSigner(uid: string, signal: AbortSignal): Promise<Sig
     { uid },
   );
 
+  return toSigner(raw);
+}
+
+/**
+ * Everyone registered to sign for one body. Upstream answers an unknown
+ * numeric uid with an empty list rather than a 404, so the caller decides
+ * whether empty means "nobody" or "no such body".
+ */
+export async function fetchOrganizationSigners(uid: string, signal: AbortSignal): Promise<Signer[]> {
+  const body = await getOrNotFound<RawSignersResponse>(
+    `organizations/${encodeURIComponent(uid)}/signers.json`,
+    signal,
+    `No public body is registered under uid "${uid}". Search for it by name with search_organizations.`,
+    { uid },
+  );
+  return (body.signers ?? []).map(toSigner);
+}
+
+function toSigner(raw: RawSigner): Signer {
   const first = blankToNull(raw.firstName);
   const last = blankToNull(raw.lastName);
 
@@ -776,6 +1199,7 @@ export async function fetchSigner(uid: string, signal: AbortSignal): Promise<Sig
     canSignForOrganization: raw.hasOrganizationSignRights === true,
     postings: (raw.units ?? []).map((unit) => ({
       unitId: unit.uid,
+      unitLabel: null,
       positionId: unit.positionId ?? null,
       positionLabel: blankToNull(unit.positionLabel),
       from: toOptionalIsoDate(unit.activationDate),
@@ -796,8 +1220,10 @@ export async function fetchDictionary(
   const body = await getOrNotFound<RawDictionaryResponse>(
     `dictionaries/${encodeURIComponent(name)}.json`,
     signal,
-    `No dictionary named "${name}".`,
+    `No dictionary named "${name}". Call list_dictionaries for the valid names.`,
     { dictionary: name },
+    // CPV alone is 10,357 entries and 1.2 MB; the rest are a few kilobytes.
+    { timeoutMs: 60_000 },
   );
 
   return (body.items ?? []).map((item) => ({
@@ -805,6 +1231,163 @@ export async function fetchDictionary(
     label: item.label,
     parent: item.parent ?? null,
   }));
+}
+
+export interface Dictionary {
+  code: string;
+  label: string;
+}
+
+/** The index of vocabularies `fetchDictionary` can be pointed at. */
+export async function fetchDictionaries(signal: AbortSignal): Promise<Dictionary[]> {
+  const body = await http.getJson<RawDictionariesResponse>("dictionaries.json", { signal });
+  return (body.dictionaries ?? []).map((entry) => ({ code: entry.uid, label: entry.label }));
+}
+
+export interface DecisionVersion {
+  versionId: string;
+  /** When this version was filed, as an ISO timestamp. */
+  at: string | null;
+  /** `PUBLISHED`, `PENDING_REVOCATION`, `REVOKED`, … — upstream's own states. */
+  status: string | null;
+  /** The version this one replaces, when it is a correction. */
+  correctedVersionId: string | null;
+  /** What the body wrote when filing it — on a revocation, the reason. */
+  note: string | null;
+}
+
+export interface DecisionHistory {
+  ada: string;
+  organizationId: string | null;
+  /** Oldest first, as upstream lists them. */
+  versions: DecisionVersion[];
+}
+
+/**
+ * Every version filed under one ΑΔΑ. A correction keeps the ΑΔΑ and adds a
+ * version; a revocation adds one in `PENDING_REVOCATION` and one in `REVOKED`.
+ *
+ * An unknown ΑΔΑ is answered with an HTML 500, not a 404, so this cannot tell
+ * "no such act" from "upstream is down". Callers check the act exists first,
+ * with `fetchDecision`, which does get a proper 404.
+ */
+export async function fetchVersionLog(ada: string, signal: AbortSignal): Promise<DecisionHistory> {
+  const body = await http.getJson<RawVersionLog>(
+    `decisions/${encodeURIComponent(ada)}/versionlog.json`,
+    { signal },
+  );
+
+  return {
+    ada: body.ada,
+    organizationId: body.organizationId ?? null,
+    versions: (body.versions ?? []).map((version) => ({
+      versionId: version.versionId,
+      at:
+        typeof version.versionTimestamp === "number"
+          ? toIsoDateTime(version.versionTimestamp)
+          : null,
+      status: version.status ?? null,
+      correctedVersionId: version.correctedVersionId ?? null,
+      note: blankToNull(version.description),
+    })),
+  };
+}
+
+export interface DecisionTypeField {
+  /** The key this value appears under in a decision's `extraFields`. */
+  key: string;
+  label: string | null;
+  help: string | null;
+  /** `string`, `integer`, `boolean`, `object`, … — upstream's own types. */
+  type: string | null;
+  required: boolean;
+  multiple: boolean;
+  /** Vocabulary the value is drawn from; look values up with search_dictionary. */
+  dictionary: string | null;
+  /** The closed set of values, where the field has one. */
+  allowedValues: string[] | null;
+  /** Lucene field for search_decisions_advanced, or null when not indexed. */
+  searchField: string | null;
+}
+
+export interface DecisionTypeDetail {
+  code: string;
+  label: string;
+  assignable: boolean;
+  fields: DecisionTypeField[];
+}
+
+/**
+ * What an act of one type carries beyond the common record. The detail
+ * endpoint reports `parent: null` for every type, even those `types.json`
+ * places in a group, so the parent is left for the caller to resolve there.
+ */
+export async function fetchDecisionTypeDetail(
+  code: string,
+  signal: AbortSignal,
+): Promise<DecisionTypeDetail> {
+  const raw = await getOrNotFound<RawTypeDetail>(
+    `types/${encodeURIComponent(code)}/details.json`,
+    signal,
+    `No decision type has the code "${code}". Call list_decision_types for the valid codes.`,
+    { code },
+  );
+
+  return {
+    code: raw.uid,
+    label: raw.label,
+    assignable: raw.allowedInDecisions,
+    fields: (raw.extraFields ?? []).map((field) => ({
+      key: field.uid,
+      label: blankToNull(field.label),
+      help: blankToNull(field.help),
+      type: field.type ?? null,
+      required: field.required === true,
+      multiple: field.multiple === true,
+      dictionary: field.dictionary ?? null,
+      allowedValues: field.fixedValueList && field.fixedValueList.length > 0 ? field.fixedValueList : null,
+      searchField: blankToNull(field.searchTerm),
+    })),
+  };
+}
+
+export interface Position {
+  id: string;
+  label: string;
+}
+
+interface RawPositionsResponse {
+  positions?: { uid: string; label: string }[] | null;
+}
+
+/**
+ * Every position title in the state. Upstream lists it once per body that uses
+ * it — 25,154 rows for 233 titles, 1.6 MB, ~14 s — so it is collapsed here and
+ * held for a day.
+ */
+export async function fetchPositions(signal: AbortSignal): Promise<Position[]> {
+  const body = await http.getJson<RawPositionsResponse>("positions.json", {
+    signal,
+    timeoutMs: 90_000,
+    retries: 0,
+  });
+
+  const seen = new Map<string, Position>();
+  for (const raw of body.positions ?? []) {
+    if (!seen.has(raw.uid)) seen.set(raw.uid, { id: raw.uid, label: raw.label });
+  }
+  return [...seen.values()];
+}
+
+/** The titles one body uses. 404 on an unknown uid, unlike its units and signers. */
+export async function fetchOrganizationPositions(uid: string, signal: AbortSignal): Promise<Position[]> {
+  const body = await getOrNotFound<RawPositionsResponse>(
+    `organizations/${encodeURIComponent(uid)}/positions.json`,
+    signal,
+    `No public body is registered under uid "${uid}". Search for it by name with search_organizations.`,
+    { uid },
+  );
+  return (body.positions ?? []).map((raw) => ({ id: raw.uid, label: raw.label }));
 }
 
 /**
@@ -817,9 +1400,10 @@ async function getOrNotFound<T>(
   signal: AbortSignal,
   message: string,
   details: Record<string, unknown>,
+  options: { timeoutMs?: number } = {},
 ): Promise<T> {
   try {
-    return await http.getJson<T>(path, { signal });
+    return await http.getJson<T>(path, { signal, ...options });
   } catch (error) {
     if (isAgoraError(error) && error.status === 404) {
       throw new NotFoundError(message, { details });
@@ -855,17 +1439,19 @@ function toOptionalIsoDate(epochMs: number | null | undefined): string | null {
 }
 
 /**
- * The issue-date window upstream actually applied, read back off the Lucene
- * query it echoes.
+ * The date window upstream actually applied to `field`, read back off the
+ * Lucene query it echoes.
  *
- * Upstream caps the window at six months and truncates anything longer without
- * saying so — asking for all of 2025 returns January to June and reports a
- * total for that half only. The requested range and the searched range are
- * therefore different things, and this is the one that is true.
+ * Upstream caps the issue-date window at 180 days and truncates anything
+ * longer without saying so — asking for all of 2025 returns January to June
+ * and reports a total for that half only. The requested range and the searched
+ * range are therefore different things, and this is the one that is true.
  */
-export function effectiveIssueWindow(query: string): { from: string; to: string } | null {
-  const match = /issueDate:\[DT\((\d{4}-\d{2}-\d{2})[^)]*\) TO DT\((\d{4}-\d{2}-\d{2})[^)]*\)\]/u.exec(
-    query,
+export function effectiveWindow(query: string, field: string): DayWindow | null {
+  const pattern = new RegExp(
+    `${field}:\\[DT\\((\\d{4}-\\d{2}-\\d{2})[^)]*\\) TO DT\\((\\d{4}-\\d{2}-\\d{2})[^)]*\\)\\]`,
+    "u",
   );
+  const match = pattern.exec(query);
   return match?.[1] && match[2] ? { from: match[1], to: match[2] } : null;
 }

@@ -6,19 +6,22 @@ import SourceSquares from "./source-squares";
  */
 export default function SourceGrid() {
   return (
-    // borderTop off: the hero ends in the shader's falloff, and a rule across
-    // it reads as a seam.
-    <Section
-      ariaLabel="Sources"
-      borderTop={false}
-      innerClassName="col-span-12 md:col-span-10"
-    >
-      <h2 className="text-2xl font-bold tracking-tight text-foreground">Sources</h2>
-      <p className="mt-3 max-w-md text-[13px] text-muted-foreground">
+    // The rule runs the full width of the viewport, outside the gutters: it
+    // marks where the hero ends, and the hero's shader has already faded to
+    // the page background by then.
+    <Section ariaLabel="Sources">
+      <h2 className="col-span-12 text-2xl font-bold tracking-tight text-foreground md:col-span-10">
+        Sources
+      </h2>
+      <p className="col-span-12 mt-3 text-[13px] text-muted-foreground md:col-span-4">
         Official registries and publishers, mounted one MCP server at a time.
       </p>
 
-      <SourceSquares />
+      {/* Ten columns, and the squares divide them ten ways — so a square is
+          one column wide and the grid inside lands on the page's own. */}
+      <div className="col-span-12 md:col-span-10">
+        <SourceSquares />
+      </div>
     </Section>
   );
 }

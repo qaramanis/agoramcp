@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { columnGapClass } from "@/components/layout/grid";
 import {
   SOURCE_GRID_COLUMNS,
   SOURCE_GRID_ROWS,
@@ -68,7 +69,7 @@ export default function SourceSquares() {
   return (
     <>
       <div
-        className="mt-8 grid grid-cols-5 gap-1 md:grid-cols-10 md:gap-2 lg:gap-4"
+        className={`mt-8 grid grid-cols-4 gap-y-1 md:grid-cols-10 md:gap-y-2 lg:gap-y-4 ${columnGapClass}`}
         onMouseMove={moveLabel}
         onMouseLeave={() => setLabel(null)}
       >

@@ -27,6 +27,14 @@ export type { Cache, MemoryCacheOptions } from "./cache.ts";
 export { createLogger, parseLogLevel } from "./logger.ts";
 export type { LogFields, LogLevel, Logger, LoggerOptions } from "./logger.ts";
 
+export {
+  MAX_TOOL_NAME_LENGTH,
+  defineBundle,
+  qualifiedToolName,
+  toolPrefix,
+} from "./bundle.ts";
+export type { Bundle, BundleMeta } from "./bundle.ts";
+
 export { defineSource, defineTool, missingEnv, sourceKey, ttlFor } from "./source.ts";
 export type {
   AnySourceTool,
@@ -35,4 +43,5 @@ export type {
   SourceTool,
   ToolAnnotations,
   ToolContext,
+  WarmContext,
 } from "./source.ts";

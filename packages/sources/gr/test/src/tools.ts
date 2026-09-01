@@ -14,6 +14,7 @@ export const ping = defineTool({
       .describe("Text echoed back verbatim. Defaults to 'pong'."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  example: { message: "hello" },
   async handler(input, context) {
     context.logger.debug("ping", { message: input.message });
     return {

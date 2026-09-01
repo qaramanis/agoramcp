@@ -6,21 +6,22 @@
  * read from once there is a database behind the form — nothing here is
  * persisted, and sending a request does not change them yet.
  *
- * Support is not listed here: it is read off `data/playground.ts`, which is
- * already the catalogue of what is mounted, so a country stops being
- * requestable the moment its first source lands.
+ * Support is not listed here: it is read off the MCP server's own registry
+ * (`data/catalogue.ts`), so a country stops being requestable the moment its
+ * first source is mounted. The page loads the catalogue and passes the mounted
+ * codes down; nothing here fetches.
  */
-import { countries as mountedCountries } from "./playground";
-import type { RequestCountry } from "./countries";
+import { requestCountries, type RequestCountry } from "./countries";
 
 /**
- * The countries with at least one source mounted, in catalogue order. Derived,
- * never listed: a country appears here the moment its first source does.
+ * The countries with at least one source mounted, by name. Derived, never
+ * listed: a country appears here the moment its first source does.
+ *
+ * `mounted` is ISO 3166-1 alpha-2 in upper case, as the request form keys it.
  */
-export const supportedCountries: RequestCountry[] = mountedCountries.map((country) => ({
-  code: country.code.toUpperCase(),
-  name: country.name,
-}));
+export function supportedCountries(mounted: readonly string[]): RequestCountry[] {
+  return requestCountries.filter((country) => mounted.includes(country.code));
+}
 
 /** Standing requests, keyed by ISO 3166-1 alpha-2. */
 export const requestCounts: Record<string, number> = {
@@ -46,12 +47,8 @@ export type CountryStatus =
   | { kind: "requested"; count: number }
   | { kind: "unrequested" };
 
-export function countryStatus(code: string): CountryStatus {
-  // The catalogue keys countries in lower case; ISO 3166-1 is upper.
-  const mounted = mountedCountries.some(
-    (country) => country.code.toLowerCase() === code.toLowerCase(),
-  );
-  if (mounted) return { kind: "supported" };
+export function countryStatus(code: string, mounted: readonly string[]): CountryStatus {
+  if (mounted.includes(code.toUpperCase())) return { kind: "supported" };
 
   const count = requestCounts[code] ?? 0;
   return count > 0 ? { kind: "requested", count } : { kind: "unrequested" };

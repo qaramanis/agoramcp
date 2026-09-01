@@ -2,7 +2,12 @@
 
 import { useCallback, useRef, useState } from "react";
 import { MousePointerClick } from "lucide-react";
-import { countries, defaultValues, type PlaygroundTool } from "@/data/playground";
+import { Grid } from "@/components/layout/grid";
+import {
+  defaultValues,
+  type PlaygroundCountry,
+  type PlaygroundTool,
+} from "@/data/playground";
 import Panel, { Placeholder } from "./panel";
 import RequestPanel from "./request-panel";
 import ResponsePanel, { type McpResult } from "./response-panel";
@@ -17,10 +22,17 @@ import Toolbar from "./toolbar";
  * the fact that there is a catalogue to pick from at all.
  *
  * Nothing about Diavgeia appears here either — country, provider, tool and
- * every field come from `data/playground.ts`, so a second source lights this
- * page up without touching it.
+ * every field come from the MCP server's registry, loaded by the page and
+ * handed in, so a second source lights this page up without touching it.
  */
-export default function Playground() {
+export default function Playground({
+  countries,
+  unavailable,
+}: {
+  countries: PlaygroundCountry[];
+  /** Why there is nothing to pick from, when the registry could not be read. */
+  unavailable: string | null;
+}) {
   const [countryCode, setCountryCode] = useState<string | null>(null);
   const [providerId, setProviderId] = useState<string | null>(null);
   const [toolName, setToolName] = useState<string | null>(null);
@@ -107,17 +119,28 @@ export default function Playground() {
   }, [provider, tool, values]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Toolbar
-        country={country}
-        provider={provider}
-        tool={tool}
-        onCountryChange={selectCountry}
-        onProviderChange={selectProvider}
-        onToolChange={selectTool}
-      />
+    // Twelve columns of the page's own, so the two panes split it in half on
+    // the same line every other block on the page is measured against.
+    <Grid inset={false} className="gap-y-4">
+      {unavailable && (
+        <p className="col-span-12 col-start-1 text-[12px] leading-relaxed text-warn">
+          {unavailable} There is nothing to pick from until it is back.
+        </p>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="col-span-12 col-start-1">
+        <Toolbar
+          countries={countries}
+          country={country}
+          provider={provider}
+          tool={tool}
+          onCountryChange={selectCountry}
+          onProviderChange={selectProvider}
+          onToolChange={selectTool}
+        />
+      </div>
+
+      <div className="col-span-12 col-start-1 lg:col-span-6">
         {provider && tool ? (
           <RequestPanel
             endpoint={provider.endpoint}
@@ -131,22 +154,24 @@ export default function Playground() {
           <Panel title="Request">
             <Placeholder>
               <MousePointerClick size={18} />
-              Choose a country, a provider and a tool to build a request
+              Choose a country, a provider and a tool
             </Placeholder>
           </Panel>
         )}
+      </div>
 
+      <div className="col-span-12 col-start-1 lg:col-span-6 lg:col-start-7">
         <ResponsePanel busy={busy} result={result} error={error} />
       </div>
 
       {/* Deliberately says nothing source-specific, so it reads the same
           whatever is selected. Each response still carries its publisher and
           licence: the MCP server sends them as the session's instructions. */}
-      <p className="text-[11px] leading-relaxed text-muted">
+      <p className="col-span-12 col-start-1 text-[11px] leading-relaxed text-muted">
         Calls run against the live registry, not a fixture. Responses are public data returned
         unmodified, under whatever licence the publishing body sets — check that source&apos;s own
         terms before reusing it.
       </p>
-    </div>
+    </Grid>
   );
 }

@@ -1,3 +1,4 @@
+import { loadCatalogue, MCP_SERVER_URL } from "@/data/catalogue";
 import { buildArguments, providerByEndpoint } from "@/data/playground";
 
 /**
@@ -6,11 +7,10 @@ import { buildArguments, providerByEndpoint } from "@/data/playground";
  * The browser never talks to the MCP server directly: that would need CORS on
  * a server whose address is not meant to be public, and it would let the page
  * name any endpoint it liked. Here the endpoint and the tool have to match the
- * catalogue in `data/playground.ts` before anything is forwarded.
+ * server's own registry — the same catalogue the page was rendered from —
+ * before anything is forwarded.
  */
 
-/** Loopback in dev; a private address once the server is deployed. */
-const MCP_SERVER_URL = process.env.MCP_SERVER_URL ?? "http://127.0.0.1:3000";
 const TIMEOUT_MS = 30_000;
 
 /** A playground call is a handful of short filters — nothing near this. */
@@ -34,7 +34,12 @@ export async function POST(request: Request) {
     values?: unknown;
   };
 
-  const provider = providerByEndpoint(endpoint);
+  // Cached for a minute alongside the page's own read, so this is not a round
+  // trip to the MCP server per call.
+  const catalogue = await loadCatalogue();
+  if (catalogue.unavailable) return fail(catalogue.unavailable, 502);
+
+  const provider = providerByEndpoint(catalogue.countries, endpoint);
   if (!provider) {
     return fail(`No provider is mounted at ${JSON.stringify(endpoint)}.`, 400);
   }
@@ -48,7 +53,7 @@ export async function POST(request: Request) {
     return fail("`values` must be an object of field names to strings.", 400);
   }
 
-  // Rebuilt from the catalogue rather than trusted: only fields the tool
+  // Rebuilt from the tool's schema rather than trusted: only fields the tool
   // declares survive, and each one is coerced to the type it declared.
   const stringValues: Record<string, string> = {};
   for (const field of definition.fields) {

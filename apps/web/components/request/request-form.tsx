@@ -14,7 +14,12 @@ import Select from "@/components/playground/select";
  * Nothing is submitted yet: the button is deliberately inert until there is
  * somewhere to send a request to.
  */
-export default function RequestForm() {
+export default function RequestForm({
+  mounted,
+}: {
+  /** Countries with a source already mounted — ISO codes, upper case. */
+  mounted: readonly string[];
+}) {
   const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -33,7 +38,7 @@ export default function RequestForm() {
   };
 
   return (
-    <div className="max-w-2xl rounded-md border border-panel-border bg-panel p-3">
+    <div className="rounded-md border border-panel-border bg-panel p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="min-w-0 flex-1">
           <Select
@@ -75,7 +80,7 @@ export default function RequestForm() {
 
       <div className="mt-3 border-t border-panel-border/70 pt-3">
         <p className="text-[12px] leading-relaxed text-muted-foreground">
-          {country ? standing(country) : <span className="text-muted">Please select a country first</span>}
+          {country ? standing(country, mounted) : <span className="text-muted">Please select a country first</span>}
         </p>
       </div>
     </div>
@@ -86,13 +91,13 @@ export default function RequestForm() {
  * Where the country stands today. Read from local placeholder data for now —
  * the sentence is the same either way once the counts come from a database.
  */
-function standing(country: RequestCountry): ReactNode {
+function standing(country: RequestCountry, mounted: readonly string[]): ReactNode {
   return (
     <>
       {/* The name carries the accent, so the line says which country it is
           about before it is read. */}
       <span className="text-accent">{country.name}</span>{" "}
-      {standingTail(countryStatus(country.code))}
+      {standingTail(countryStatus(country.code, mounted))}
     </>
   );
 }

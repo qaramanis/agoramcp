@@ -75,7 +75,9 @@ export default function NavigationDesktop({
 
   useEffect(() => cancelClose, [cancelClose]);
 
-  // Pages don't exist yet, so selecting an item just closes the panel.
+  // A row whose page exists navigates through its own <Link>; this only
+  // tidies up after it, and is the whole interaction for the ones that
+  // are still placeholders.
   const handleMenuItemClick = useCallback(() => {
     setActiveDropdown(null);
     setSearchQuery("");

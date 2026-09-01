@@ -16,8 +16,9 @@ export const menuItems: MenuItem[] = [
 export const productItems: IconItem[] = [
   {
     title: "MCP",
-    description: "Connect Claude, Cursor or any MCP client to Greek open data",
-    url: "#",
+    description:
+      "Connect Claude, Cursor, Codex or any MCP client to official open data",
+    url: "/mcp",
     iconColor: "#4ade80",
   },
   {
@@ -38,7 +39,7 @@ export const productCards: PanelCard[] = [
   {
     title: "Quickstart",
     description: "Connected in under a minute",
-    url: "#",
+    url: "/quickstart",
   },
   {
     title: "View live",
@@ -50,7 +51,8 @@ export const productCards: PanelCard[] = [
 export const features: DropdownItem[] = [
   {
     title: "Typed tool schemas",
-    description: "Every tool declares its arguments, so models call them correctly",
+    description:
+      "Every tool declares its arguments, so models call them correctly",
     url: "#",
   },
   {
@@ -118,7 +120,7 @@ export const resourceCountries: CountryGroup[] = [
 export const resourceCards: PanelCard[] = [
   {
     title: "Documentation",
-    description: "How the servers work",
+    description: "Configuration, setup, and user guide",
     url: "#",
   },
   {

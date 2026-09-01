@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { z } from "zod";
 import type { Cache } from "./cache.ts";
 import type { Logger } from "./logger.ts";
 
@@ -63,6 +63,15 @@ export interface SourceTool<Shape extends z.ZodRawShape = z.ZodRawShape> {
   inputSchema: Shape;
   annotations?: ToolAnnotations;
   /**
+   * Arguments a demonstration starts on: one real call that answers quickly
+   * and returns something worth reading. Checked against `inputSchema` at
+   * boot, so it cannot drift from the schema it exercises. The landing page's
+   * live console prefills every tool from this; a tool without one starts
+   * blank. Literal values only — a date computed at import time would differ
+   * between server and browser renders.
+   */
+  example?: z.input<z.ZodObject<Shape>>;
+  /**
    * Returns plain data; the server serialises it into MCP content. Throw an
    * `AgoraError` for anything the model should see as a failure.
    */
@@ -76,6 +85,9 @@ export interface SourceTool<Shape extends z.ZodRawShape = z.ZodRawShape> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnySourceTool = SourceTool<any>;
 
+/** What a warm-up gets: no tool is being invoked, so no input and no per-tool TTL. */
+export type WarmContext = Pick<ToolContext, "cache" | "logger" | "signal" | "env">;
+
 export interface Source {
   /** Slug, unique within the country: `diavgeia`, `quakes`. */
   id: string;
@@ -83,6 +95,13 @@ export interface Source {
   country: string;
   meta: SourceMeta;
   tools: readonly AnySourceTool[];
+  /**
+   * Optional prefetch, run once at boot in the background. A source whose
+   * first call would otherwise pay for something slow — a whole register, a
+   * large vocabulary — moves that cost off its first caller here. A failure is
+   * logged and ignored: every tool must work without it.
+   */
+  warm?: (context: WarmContext) => Promise<void>;
 }
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -121,6 +140,15 @@ export function defineSource(source: Source): Source {
       throw new Error(`Duplicate tool "${tool.name}" in "${source.country}/${source.id}".`);
     }
     seen.add(tool.name);
+
+    if (tool.example !== undefined) {
+      const parsed = z.object(tool.inputSchema).safeParse(tool.example);
+      if (!parsed.success) {
+        throw new Error(
+          `Example for tool "${tool.name}" in "${source.country}/${source.id}" does not satisfy its own schema: ${z.prettifyError(parsed.error)}`,
+        );
+      }
+    }
   }
 
   return source;

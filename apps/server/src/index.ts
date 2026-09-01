@@ -1,18 +1,22 @@
 import { serve } from "@hono/node-server";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { createLogger, createMemoryCache } from "@agoramcp/core";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { loadConfig } from "./config.ts";
-import { createMcpServer, SERVER_VERSION } from "./mcp.ts";
+import { createBundleServer, createSourceServer, SERVER_VERSION, type McpServerDeps } from "./mcp.ts";
 import { requestLogger } from "./middleware/logging.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
-import { buildRegistry, describeRegistry } from "./registry.ts";
+import { buildBundles, buildRegistry, describeBundles, describeRegistry } from "./registry.ts";
 
 const config = loadConfig();
 const logger = createLogger({ level: config.logLevel, base: { service: "agoramcp" } });
 const cache = createMemoryCache({ maxEntries: config.cacheMaxEntries });
 const registry = buildRegistry();
+const bundles = buildBundles(registry);
+
+const deps: McpServerDeps = { cache, logger, env: process.env };
 
 const app = new Hono();
 
@@ -28,36 +32,55 @@ app.use(
   }),
 );
 
-app.get("/health", (c) => c.json({ status: "ok", version: SERVER_VERSION, sources: registry.size }));
+app.get("/health", (c) =>
+  c.json({ status: "ok", version: SERVER_VERSION, sources: registry.size, countries: bundles.size }),
+);
 
 app.get("/", (c) =>
   c.json({
     name: "agoramcp",
     version: SERVER_VERSION,
     description: "MCP servers over Greek open government data.",
+    countries: describeBundles(bundles),
     sources: describeRegistry(registry),
   }),
 );
 
 const limiter = createRateLimiter(config.rateLimitPerMinute);
-if (limiter) app.use("/:country/mcp/:source", limiter);
+if (limiter) {
+  // Both mounts, or the country server would ship without a limit.
+  app.use("/:country/mcp", limiter);
+  app.use("/:country/mcp/:source", limiter);
+}
 
 app.all("/:country/mcp/:source", async (c) => {
   const key = `${c.req.param("country")}/${c.req.param("source")}`;
   const source = registry.get(key);
 
-  if (!source) {
-    return c.json(
-      {
-        jsonrpc: "2.0",
-        error: { code: -32601, message: `No source mounted at "${key}".` },
-        id: null,
-      },
-      404,
-    );
-  }
+  if (!source) return notMounted(c, "source", key);
 
-  const server = createMcpServer(source, { cache, logger, env: process.env });
+  return runServer(c, key, createSourceServer(source, deps));
+});
+
+/**
+ * The country server: every source that country publishes, tools prefixed by
+ * the source that answers them. A distinct path segment count from the mount
+ * above, so the two routes cannot shadow each other.
+ */
+app.all("/:country/mcp", async (c) => {
+  const country = c.req.param("country");
+  const bundle = bundles.get(country);
+
+  if (!bundle) return notMounted(c, "country", country);
+
+  return runServer(c, country, createBundleServer(bundle, deps));
+});
+
+/**
+ * One request, one server. The transport is stateless — no session to
+ * resume — so the instance is torn down as soon as the reply is buffered.
+ */
+async function runServer(c: Context, mount: string, server: McpServer) {
   const transport = new StreamableHTTPTransport({
     // Stateless: no session to resume, so every request stands alone.
     sessionIdGenerator: undefined,
@@ -72,10 +95,21 @@ app.all("/:country/mcp/:source", async (c) => {
     return (await transport.handleRequest(c)) ?? c.body(null, 204);
   } finally {
     await server.close().catch((error: unknown) => {
-      logger.warn("server.close failed", { source: key, error });
+      logger.warn("server.close failed", { mount, error });
     });
   }
-});
+}
+
+function notMounted(c: Context, what: string, key: string) {
+  return c.json(
+    {
+      jsonrpc: "2.0",
+      error: { code: -32601, message: `No ${what} mounted at "${key}".` },
+      id: null,
+    },
+    404,
+  );
+}
 
 app.onError((error, c) => {
   logger.error("unhandled", { path: c.req.path, error });
@@ -89,5 +123,23 @@ serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => 
   logger.info("listening", {
     address: `http://${config.host}:${info.port}`,
     sources: [...registry.keys()],
+    countries: [...bundles.keys()],
   });
 });
+
+/** Generous: a warm-up exists precisely because the thing it fetches is slow. */
+const WARM_TIMEOUT_MS = 180_000;
+
+// Off the request path and after the port is open, so a slow prefetch never
+// delays the first answer — it only makes it faster when it lands first.
+for (const [key, source] of registry) {
+  if (!source.warm) continue;
+  const warmLogger = logger.child({ source: key });
+  const startedAt = Date.now();
+  source
+    .warm({ cache, logger: warmLogger, signal: AbortSignal.timeout(WARM_TIMEOUT_MS), env: process.env })
+    .then(
+      () => warmLogger.info("warm.ok", { durationMs: Date.now() - startedAt }),
+      (error: unknown) => warmLogger.warn("warm.failed", { durationMs: Date.now() - startedAt, error }),
+    );
+}

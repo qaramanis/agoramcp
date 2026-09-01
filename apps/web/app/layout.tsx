@@ -35,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {/* Negative z-index: above this wrapper's background, below every
               section's content, and bounded by the wrapper — so the stars stop
               where the footer starts. */}
-          {/*<Starfield />*/}
+          <Starfield />
           <Navigation />
           {children}
         </div>

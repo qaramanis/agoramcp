@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { contactLinks, footerColumns, type FooterLink } from "@/data/footer";
 import { Grid, gutterClass } from "@/components/layout/grid";
@@ -49,26 +50,43 @@ export default function Footer() {
       </div>
 
       <div className="relative mb-12">
-        <Grid inset={false} className="space-y-3">
+        <Grid inset={false} className="gap-y-6">
           {footerColumns.map((column) => (
-            <div key={column.title} className={`${column.className} flex flex-col`}>
-              <h6 className="mb-4 text-[15px] font-medium tracking-tight text-background">
-                {column.title}
-              </h6>
-              <LinkList links={column.links} />
-            </div>
+            <Fragment key={column.title}>
+              <div className={`${column.className} flex flex-col`}>
+                <h6 className="mb-4 text-[15px] font-medium tracking-tight text-background">
+                  {column.title}
+                </h6>
+                <LinkList links={column.links} />
+                {/* Below md the overflow hangs off the end of its own column;
+                    mt-2 matches the list's own spacing so it reads as one. */}
+                {column.moreLinks && (
+                  <div className="mt-2 md:hidden">
+                    <LinkList links={column.moreLinks} />
+                  </div>
+                )}
+              </div>
+
+              {column.moreLinks && (
+                <div className={`${column.moreClassName} flex-col`}>
+                  {/* A continuation of the column beside it, so no heading of
+                      its own — only the space one would take, which keeps the
+                      two lists on the same line. */}
+                  <h6
+                    aria-hidden
+                    className="mb-4 text-[15px] font-medium tracking-tight text-background"
+                  >
+                    &nbsp;
+                  </h6>
+                  <LinkList links={column.moreLinks} />
+                </div>
+              )}
+            </Fragment>
           ))}
 
           {/* Contact sits in the last three columns on desktop and drops to its
               own full-width row below md, where the grid is only two wide. */}
-          <div className="hidden flex-col md:col-span-3 md:col-start-9 md:flex">
-            <h6 className="mb-4 text-[15px] font-medium tracking-tight text-background">
-              Contact
-            </h6>
-            <LinkList links={contactLinks} />
-          </div>
-
-          <div className="col-span-12 col-start-1 flex flex-col md:hidden">
+          <div className="col-span-12 col-start-1 flex flex-col md:col-span-3 md:col-start-9">
             <h6 className="mb-4 text-[15px] font-medium tracking-tight text-background">
               Contact
             </h6>
