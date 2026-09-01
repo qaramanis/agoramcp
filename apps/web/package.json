@@ -7,11 +7,18 @@
     "build": "next build",
     "start": "next start -p ${PORT:-3001}",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "tsx db/migrate.ts migrate",
+    "db:rollback": "tsx db/migrate.ts rollback",
+    "db:reset": "tsx db/migrate.ts reset",
+    "db:status": "tsx db/migrate.ts status",
+    "db:make": "tsx db/migrate.ts make",
+    "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {
     "lucide-react": "^1.35.0",
     "next": "16.3.3",
+    "postgres": "3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -23,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "tailwindcss": "^4",
+    "tsx": "4.23.13",
     "typescript": "^5"
   }
 }

@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
 import { Grid, gutterClass } from "@/components/layout/grid";
 import RequestForm from "@/components/request/request-form";
-import { loadCatalogue } from "@/data/catalogue";
+import { loadCountries } from "@/db/queries";
 
 export const metadata: Metadata = {
   title: "Request a country — agoramcp",
   description: "Tell us which country's open data should be mounted next.",
 };
 
-/** Per request, for the same reason as `/live`: the served list is the server's. */
+/** Per request: the counts are the database's, and a request changes them. */
 export const revalidate = 0;
 
 export default async function RequestPage() {
-  const catalogue = await loadCatalogue();
-  // The catalogue keys countries in lower case; ISO 3166-1 is upper.
-  const mounted = catalogue.countries.map((country) => country.code.toUpperCase());
+  const { countries, unavailable } = await loadCountries();
 
   return (
     <main className={`min-h-screen pt-28 pb-20 ${gutterClass}`}>
@@ -37,7 +35,7 @@ export default async function RequestPage() {
             </p>
 
             <div className="mt-6">
-              <RequestForm mounted={mounted} />
+              <RequestForm countries={countries} unavailable={unavailable} />
             </div>
           </div>
         </Grid>

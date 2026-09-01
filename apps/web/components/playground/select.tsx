@@ -190,7 +190,7 @@ export default function Select({
           >
             {matches.length === 0 ? (
               <li className="px-2.5 py-6 text-center text-[11px] text-muted">
-                No matches for &ldquo;{query.trim()}&rdquo;
+                No matches
               </li>
             ) : (
               matches.map((option, index) => (

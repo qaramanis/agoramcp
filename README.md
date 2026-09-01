@@ -84,6 +84,34 @@ Any host that runs a persistent Node process works as well: `pnpm start` runs
 `apps/server/src/serve.ts`, which binds the port and then runs the warm-up.
 `apps/server/railway.json` is a ready-made config for Railway.
 
+## Database
+
+`apps/web` keeps the country requests in Postgres (Neon in production). The
+schema is a queue of migrations, run the way Laravel runs them: files under
+`apps/web/db/migrations/` named `YYYY_MM_DD_HHMMSS_<name>.ts`, each exporting
+`up` and `down`, and a `migrations` table that records every one that has run
+with the batch it ran in. There is no schema file to keep in step — the
+migrations are the schema.
+
+```bash
+pnpm --filter @agoramcp/web db:migrate              # run what is pending, as one batch
+pnpm --filter @agoramcp/web db:rollback             # reverse the last batch
+pnpm --filter @agoramcp/web db:rollback --step=1    # or the last N migrations
+pnpm --filter @agoramcp/web db:reset                # reverse everything
+pnpm --filter @agoramcp/web db:status               # what has run, what has not
+pnpm --filter @agoramcp/web db:make add_x_to_y      # scaffold a new migration
+pnpm --filter @agoramcp/web db:seed                 # every seeder; `db:seed countries` for one
+```
+
+Each migration runs in a transaction with its own bookkeeping row, so one that
+fails leaves nothing behind. The scripts read `apps/web/.env.local` and use
+`DATABASE_URL_UNPOOLED` where it is set — a DDL transaction has to stay on one
+server session, which Neon's pooler does not promise.
+
+`db:seed countries` loads the full ISO 3166-1 list from `apps/web/data/countries.ts`
+and marks the countries with a source mounted as supported. It is safe to run
+again: it upserts, and it never unmarks a country.
+
 ## Adding a source
 
 Adding a country or a source is a new folder plus one import — the server has no
