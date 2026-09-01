@@ -74,9 +74,11 @@ export async function loadCatalogue(): Promise<Catalogue> {
 }
 
 /**
- * Sources grouped by country, in the order the server lists them. The country
- * server's name is used where there is one; a country whose sources are all
- * kept off it falls back to the ISO list the request form uses.
+ * Sources grouped by country, each country's sources alphabetical by the name
+ * the page shows — not in the order the server lists them, which is only the
+ * order they were imported in. The country server's name is used where there
+ * is one; a country whose sources are all kept off it falls back to the ISO
+ * list the request form uses.
  */
 function toCountries(registry: Registry): PlaygroundCountry[] {
   const names = new Map((registry.countries ?? []).map((entry) => [entry.country, entry.name]));
@@ -98,7 +100,16 @@ function toCountries(registry: Registry): PlaygroundCountry[] {
     country.providers.push(toProvider(source));
   }
 
+  for (const country of byCode.values()) {
+    country.providers.sort((a, b) => byName(a.name, b.name));
+  }
+
   return [...byCode.values()];
+}
+
+/** Alphabetical as a reader sees it: case and accents do not split the list. */
+function byName(a: string, b: string): number {
+  return a.localeCompare(b, "en", { sensitivity: "base" });
 }
 
 function toProvider(source: RegistrySource): PlaygroundProvider {
