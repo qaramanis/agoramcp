@@ -21,6 +21,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.13",
+    title: "Add the NOA earthquake source and generate the changelog from git",
+    body: [
+      "Add `packages/sources/gr/noa`: a client over the National Observatory of Athens FDSN event service, with `search_earthquakes` (time, magnitude, depth, bounding box or radius), `get_earthquake` — which reads QuakeML for the quality of the solution — and `list_recent_earthquakes`. CC-BY-4.0 and the Institute of Geodynamics attribution in `meta.ts`, short TTLs because seismicity is live. One import in `registry.ts`; documented in `docs/gr-documentation.md` and the package's `DOCUMENTATION.md`.",
+      "Replace the hand-written changelog with the repository's own history: `pnpm db:changelog` writes `data/changelog.ts` from git and the `versions` table, resolving each commit's version as it goes. /changelog becomes a flat list of commits, newest first, and gets its nav, footer and documentation-index links.",
+      "The footer now reads the version from `data/version.ts` instead of the database, so it and the changelog cannot disagree — dropping `latestVersion`/`loadVersion` and the layout's one-minute `revalidate`.",
+    ],
+    date: "2026-09-07",
+    sha: "d5373d520a0e89cd5dd4493f867ccf6d44cb4100",
+  },
+  {
     version: "v.1.1.12",
     title: "Animate page transitions across all routes",
     body: [],
