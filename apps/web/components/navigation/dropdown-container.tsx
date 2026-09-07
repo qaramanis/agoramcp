@@ -5,18 +5,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { Code2, LayoutDashboard, Server } from "lucide-react";
 import {
-  features,
   productCards,
   productItems,
   resourceCards,
-  resourceCountries,
+  resourceItems,
+  useCaseItems,
 } from "@/data/menu";
 import { MIN_QUERY, searchContent } from "@/data/search";
 
 const productIcons = [Server, Code2, LayoutDashboard];
 
 export type DropdownType =
-  "product" | "features" | "resources" | "search" | null;
+  "product" | "useCases" | "resources" | "search" | null;
 
 interface DropdownContainerProps {
   activeDropdown: DropdownType;
@@ -138,10 +138,10 @@ export default function DropdownContainer({
         </div>
       )}
 
-      {activeDropdown === "features" && (
+      {activeDropdown === "useCases" && (
         <div className="dropdown-content w-[440px] p-2">
           <div className="flex flex-col gap-0.5">
-            {features.map((item) => (
+            {useCaseItems.map((item) => (
               <PanelRow key={item.title} item={item} onClick={onItemClick} />
             ))}
           </div>
@@ -156,24 +156,12 @@ export default function DropdownContainer({
 
       {activeDropdown === "resources" && (
         <div className="dropdown-content flex w-[740px]">
-          {/* One column: the group labels do the separating, not the layout. */}
           <div className="flex-1 p-2">
-            {resourceCountries.map((country) => (
-              <div key={country.code}>
-                <div className="px-2.5 pt-1 pb-1.5 text-[10px] font-medium tracking-wider text-muted uppercase">
-                  {country.label}
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {country.sources.map((item) => (
-                    <PanelRow
-                      key={item.title}
-                      item={item}
-                      onClick={onItemClick}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className="flex flex-col gap-0.5">
+              {resourceItems.map((item) => (
+                <PanelRow key={item.title} item={item} onClick={onItemClick} />
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-1 flex-col gap-2 p-2 pl-0">
@@ -192,8 +180,8 @@ export default function DropdownContainer({
 }
 
 /**
- * One title/description row, shared by the product, features, resources and
- * search lists.
+ * One title/description row, shared by the product, use case, resources
+ * and search lists.
  *
  * Same bargain as PanelCardButton: a row whose page exists is a real link, so
  * it can be middle-clicked and opened in a new tab, and a row that still

@@ -8,15 +8,16 @@
  */
 import { agents } from "./agents";
 import { ENVELOPE, ERROR_CODES } from "./api";
-import { requestCountries } from "./countries";
+import { requestCountries, servedCountries } from "./countries";
+import { glossary } from "./documentation";
 import { contactLinks, footerColumns, type FooterLink } from "./footer";
 import { mounts } from "./mcp";
 import {
-  features,
   productCards,
   productItems,
   resourceCards,
-  resourceCountries,
+  resourceItems,
+  useCaseItems,
   type DropdownItem,
 } from "./menu";
 import { firstSentence } from "./playground";
@@ -56,12 +57,10 @@ function entry(item: DropdownItem, group: string): SearchResult {
 /** Everything the nav dropdowns list, grouped the way the panels group it. */
 function fromMenu(): SearchResult[] {
   return [
-    ...resourceCountries.flatMap((country) =>
-      country.sources.map((source) => entry(source, country.label)),
-    ),
     ...productItems.map((item) => entry(item, "Product")),
     ...productCards.map((item) => entry(item, "Product")),
-    ...features.map((item) => entry(item, "Features")),
+    ...useCaseItems.map((item) => entry(item, "Use cases")),
+    ...resourceItems.map((item) => entry(item, "Resources")),
     ...resourceCards.map((item) => entry(item, "Resources")),
   ];
 }
@@ -136,14 +135,27 @@ function fromApi(): SearchResult[] {
 }
 
 /**
- * Every country the request form offers, minus the ones the menu already
- * serves — a served country has its sources to find instead. Last in the
- * index, so on an equal match everything else comes first.
+ * The vocabulary, so a word met on another page can be looked up by typing it.
+ * Under a group of its own: a term is a definition, not a page. Backticks are
+ * the documentation page's markup for literals and are stripped here, where
+ * there is nothing to render them with.
+ */
+function fromGlossary(): SearchResult[] {
+  return glossary.map((term) => ({
+    title: term.term,
+    description: term.definition.replace(/`/g, ""),
+    url: "/documentation",
+    group: "Vocabulary",
+  }));
+}
+
+/**
+ * Every country the request form offers, minus the ones already mounted — a
+ * served country has its catalogue to find instead. Last in the index, so on
+ * an equal match everything else comes first.
  */
 function fromCountries(): SearchResult[] {
-  const served = new Set(
-    resourceCountries.map((country) => country.code.toUpperCase()),
-  );
+  const served = new Set(servedCountries);
   return requestCountries
     .filter((country) => !served.has(country.code))
     .map((country) => ({
@@ -176,6 +188,7 @@ const searchIndex: SearchResult[] = dedupe([
   ...fromMounts(),
   ...fromAgents(),
   ...fromApi(),
+  ...fromGlossary(),
   ...fromCountries(),
 ]);
 

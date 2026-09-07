@@ -284,7 +284,7 @@ function Limits() {
 /** The way out, in both directions the site offers. */
 const EXITS: { title: string; description: string; href: string }[] = [
   {
-    title: "Rather use an agent?",
+    title: "Use the tools via an agent",
     description: "Point Claude, Cursor or Codex at the same tools over MCP.",
     href: "/mcp",
   },

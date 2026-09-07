@@ -14,9 +14,16 @@ interface CodeBlockProps {
   code: string;
   /** Names the thing being copied, for the tooltip and screen readers. */
   label: string;
+  /**
+   * Wraps instead of scrolling. For a block holding a sentence rather than a
+   * command: a prompt is read before it is copied, and a line of English that
+   * runs off the edge is the one thing the reader came for. Commands and JSON
+   * keep the scroll, where a wrap would invent a line break that isn't there.
+   */
+  wrap?: boolean;
 }
 
-export default function CodeBlock({ code, label }: CodeBlockProps) {
+export default function CodeBlock({ code, label, wrap = false }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -43,8 +50,12 @@ export default function CodeBlock({ code, label }: CodeBlockProps) {
   return (
     <div className="relative rounded-md border border-panel-border bg-panel">
       {/* The right padding is the button's lane: a long line scrolls under it
-          rather than stopping short of it. */}
-      <pre className="overflow-x-auto px-3 py-3 pr-12 text-[12px] leading-relaxed text-foreground">
+          rather than stopping short of it, and a wrapped one breaks before it. */}
+      <pre
+        className={`px-3 py-3 pr-12 text-[12px] leading-relaxed text-foreground ${
+          wrap ? "whitespace-pre-wrap" : "overflow-x-auto"
+        }`}
+      >
         <code>{code}</code>
       </pre>
 

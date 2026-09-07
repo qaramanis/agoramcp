@@ -6,8 +6,8 @@
  * place someone finds their country missing. Ordered by name, which is the
  * order the selector shows them in.
  *
- * Nothing here says which of them are already served; that lives in
- * `data/playground.ts`, and the form does not filter against it yet.
+ * Which of them are already served is `servedCountries` below; the form does
+ * not filter against it yet.
  */
 export type RequestCountry = {
   /** ISO 3166-1 alpha-2, and the value the form submits. */
@@ -268,3 +268,12 @@ export const requestCountries: RequestCountry[] = [
   { code: "ZM", name: "Zambia" },
   { code: "ZW", name: "Zimbabwe" },
 ];
+
+/**
+ * The countries the server already mounts, ISO 3166-1 alpha-2.
+ *
+ * The registry is the real answer, but it is only reachable asynchronously
+ * (`loadCatalogue`), and the search index is built at module load — so this is
+ * the one place the list is written down. Mounting a country adds a code here.
+ */
+export const servedCountries = ["GR"];

@@ -8,6 +8,7 @@ import Band from "@/components/mcp/band";
 import type { CatalogueCountry, CatalogueSource } from "@/data/directory";
 import { count } from "@/data/format";
 import { CountryRow, SourceRow } from "./rows";
+import SectionHero from "./section-hero";
 
 /**
  * The catalogue: a hero whose right column is the search field, and under it
@@ -40,8 +41,17 @@ export default function Catalogue({
     .filter((source) => sourceMatches(source, needle))
     .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 
-  const nothing =
-    needle.length > 0 && matchedCountries.length === 0 && matchedSources.length === 0;
+  const searching = needle.length > 0;
+  const nothing = searching && matchedCountries.length === 0 && matchedSources.length === 0;
+
+  /* Built once: the same rows stand under the section's hero and, while a
+     search is running, under the plain heading that replaces it. */
+  const countryRows = matchedCountries.map((country) => (
+    <CountryRow key={country.code} country={country} />
+  ));
+  const sourceRows = matchedSources.map((source) => (
+    <SourceRow key={`${source.country}/${source.id}`} source={source} />
+  ));
 
   const totalSources = countries.reduce((total, country) => total + country.sources.length, 0);
   const totalTools = countries.reduce((total, country) => total + country.toolCount, 0);
@@ -61,7 +71,7 @@ export default function Catalogue({
               <input
                 type="text"
                 value={query}
-                placeholder="Search a country or a source"
+                placeholder="Search for a country or a source"
                 aria-label="Search the catalogue"
                 spellCheck={false}
                 autoComplete="off"
@@ -95,27 +105,70 @@ export default function Catalogue({
         <NothingFound query={query.trim()} />
       ) : (
         <>
-          <Band ariaLabel="Countries" title="Countries">
-            <ul className="col-span-8 col-start-1 mt-8 border-b border-panel-border/50">
-              {matchedCountries.map((country) => (
-                <CountryRow key={country.code} country={country} />
-              ))}
-            </ul>
-            {matchedCountries.length === 0 && !unavailable && (
-              <Empty>No country matches “{query.trim()}”.</Empty>
-            )}
-          </Band>
+          {/* The hero is for the reader who arrived at the catalogue; the
+              reader who is typing wants the rows, not a screen of copy in
+              front of them, so a search swaps it for the plain heading. */}
+          {searching ? (
+            <Band ariaLabel="Countries" title="Countries">
+              <ul className="col-span-8 col-start-1 mt-8 border-b border-panel-border/50">
+                {countryRows}
+              </ul>
+              {matchedCountries.length === 0 && !unavailable && (
+                <Empty>No country matches “{query.trim()}”.</Empty>
+              )}
+            </Band>
+          ) : (
+            <SectionHero
+              label="Countries"
+              title="One server per country."
+              blurb="Each country bundles the registries it publishes behind a single MCP endpoint. Open one to see the sources it serves."
+              jump={{ href: "#countries", label: "View countries" }}
+              action={{ href: "/country", label: "Request a country" }}
+            >
+              {/* The jump lands on the heading rather than the first row, so
+                  the list arrives with its name above it. `scroll-mt-28`
+                  clears the fixed navigation. */}
+              <h3
+                id="countries"
+                className="col-span-12 col-start-1 scroll-mt-28 text-[1.5rem] leading-[1.25] font-medium tracking-tight text-foreground md:col-span-8"
+              >
+                Supported countries
+              </h3>
+              <ul className="col-span-12 col-start-1 mt-8 border-b border-panel-border/50 md:col-span-8">
+                {countryRows}
+              </ul>
+            </SectionHero>
+          )}
 
-          <Band ariaLabel="Sources" title="Sources">
-            <ul className="col-span-8 col-start-1 mt-8 border-b border-panel-border/50">
-              {matchedSources.map((source) => (
-                <SourceRow key={`${source.country}/${source.id}`} source={source} />
-              ))}
-            </ul>
-            {matchedSources.length === 0 && !unavailable && (
-              <Empty>No source matches “{query.trim()}”.</Empty>
-            )}
-          </Band>
+          {searching ? (
+            <Band ariaLabel="Sources" title="Sources">
+              <ul className="col-span-8 col-start-1 mt-8 border-b border-panel-border/50">
+                {sourceRows}
+              </ul>
+              {matchedSources.length === 0 && !unavailable && (
+                <Empty>No source matches “{query.trim()}”.</Empty>
+              )}
+            </Band>
+          ) : (
+            /* No second call: a source is not something a reader can ask for
+               the way a country is — the list itself is where they go next. */
+            <SectionHero
+              label="Sources"
+              title="Every registry, on its own endpoint."
+              blurb="A source is one official registry, mounted whole. Open one for its address, its licence and the full reference of its tools."
+              jump={{ href: "#sources", label: "View sources" }}
+            >
+              <h3
+                id="sources"
+                className="col-span-12 col-start-1 scroll-mt-28 text-[1.5rem] leading-[1.25] font-medium tracking-tight text-foreground md:col-span-8"
+              >
+                Supported sources
+              </h3>
+              <ul className="col-span-12 col-start-1 mt-8 border-b border-panel-border/50 md:col-span-8">
+                {sourceRows}
+              </ul>
+            </SectionHero>
+          )}
         </>
       )}
     </>

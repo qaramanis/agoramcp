@@ -35,9 +35,9 @@ importers:
       '@agoramcp/source-gr-mitos':
         specifier: workspace:*
         version: link:../../packages/sources/gr/mitos
-      '@agoramcp/source-gr-test':
+      '@agoramcp/source-gr-vies':
         specifier: workspace:*
-        version: link:../../packages/sources/gr/test
+        version: link:../../packages/sources/gr/vies
       '@hono/mcp':
         specifier: ^0.3.2
         version: 0.3.2(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.5.2))(hono-rate-limiter@0.5.3(hono@4.13.5))(hono@4.13.5)(zod@4.5.2)
@@ -231,7 +231,7 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
-  packages/sources/gr/test:
+  packages/sources/gr/vies:
     dependencies:
       '@agoramcp/core':
         specifier: workspace:*

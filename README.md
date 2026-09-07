@@ -190,8 +190,9 @@ per-source code.
 6. List its tools, one line each, in `docs/{country}-documentation.md`, and
    write the full reference in the package's `DOCUMENTATION.md`.
 
-`packages/sources/gr/test` is the reference shape. It has no upstream and exists
-only to prove the transport; delete it once real sources are mounted.
+`packages/sources/gr/mitos` is the reference shape for a source written against
+a bespoke upstream API: a `client.ts` over the portal, one `tools.ts` entry per
+question it answers, and the licence in `meta.ts`.
 
 A source over a platform many publishers run — CKAN today — is the shared
 adapter instantiated for one portal: `packages/sources/gr/datagov` is

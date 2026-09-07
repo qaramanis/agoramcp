@@ -1,3 +1,5 @@
+import { casePath, useCases } from "./use-cases";
+
 /**
  * Navigation content. A `url` of "#" is a page that does not exist yet, and
  * the nav renders those as inert buttons — only real paths navigate.
@@ -31,7 +33,7 @@ export type PanelCard = {
 
 export const menuItems: MenuItem[] = [
   { title: "Product", dropdown: true, url: "#" },
-  { title: "Features", dropdown: true, url: "#" },
+  { title: "Use cases", dropdown: true, url: "#" },
   { title: "Resources", dropdown: true, url: "#" },
 ];
 
@@ -76,78 +78,45 @@ export const productCards: PanelCard[] = [
   },
 ];
 
-export const features: DropdownItem[] = [
-  {
-    title: "Typed tool schemas",
-    description:
-      "Every tool declares its arguments, so models call them correctly",
-    url: "#",
-    keywords: ["json schema", "input schema"],
-  },
-  {
-    title: "Response caching",
-    description: "Per-source TTLs keep upstreams healthy and answers fast",
-    url: "#",
-    keywords: ["cache"],
-  },
-  {
-    title: "Attribution built in",
-    description: "Licence and publisher travel with every response",
-    url: "#",
-    keywords: ["license"],
-  },
-  {
-    title: "One endpoint per source",
-    description: "Connect only to the data you actually need",
-    url: "#",
-    keywords: ["mount"],
-  },
-];
+/**
+ * One row per use case, each with a page of its own. Built from
+ * `data/use-cases.ts` rather than typed out again, so a row cannot name a page
+ * that is not there — and a new use case appears in the nav by being written.
+ */
+export const useCaseItems: DropdownItem[] = useCases.map((useCase) => ({
+  title: useCase.title,
+  description: useCase.summary,
+  url: casePath(useCase.slug),
+}));
 
 /**
- * Resources are grouped by country. Adding a country adds a column here and
- * nothing else — the dropdown widens to fit.
+ * What you consult while using the sources: how to work them, what changed,
+ * whether they are answering, and what the licences ask of you in return.
  */
-export type CountryGroup = {
-  code: string;
-  label: string;
-  sources: DropdownItem[];
-};
-
-export const resourceCountries: CountryGroup[] = [
+export const resourceItems: DropdownItem[] = [
   {
-    code: "docs",
-    label: "Docs",
-    sources: [
-      {
-        title: "Documentation",
-        description: "Configuration, setup, and user guide",
-        url: "#",
-      },
-    ],
+    title: "Documentation",
+    description: "The vocabulary, the conventions, and which page answers what",
+    url: "/documentation",
+    keywords: ["docs", "guide"],
   },
   {
-    code: "gr",
-    label: "Greece",
-    sources: [
-      {
-        title: "Diavgeia",
-        description: "Public spending decisions and procurement",
-        url: "/all/gr/diavgeia",
-        keywords: ["διαύγεια", "transparency"],
-      },
-      {
-        title: "data.gov.gr",
-        description: "National open data catalogue",
-        url: "#",
-        keywords: ["ckan", "dataset"],
-      },
-      {
-        title: "gov.gr",
-        description: "Public services and administrative data",
-        url: "#",
-      },
-    ],
+    title: "Changelog",
+    description: "New sources and tools as they land",
+    url: "#",
+    keywords: ["releases", "updates"],
+  },
+  {
+    title: "Status",
+    description: "Whether each upstream registry is answering",
+    url: "/status",
+    keywords: ["uptime", "incidents"],
+  },
+  {
+    title: "Licences",
+    description: "Every source's licence and the attribution it asks for",
+    url: "/licenses",
+    keywords: ["license", "attribution", "terms", "reuse"],
   },
 ];
 

@@ -94,9 +94,13 @@ Full reference:
 - `search_organizations`: find a body in the procedures registry by name, VAT number or id
 - `get_organization`: a body's registry record — contact details, parent and sub-bodies
 
-## Test — `test`
+## VIES — `vies`
 
-Not data: a transport check. Mounted at `/gr/mcp/test` only and kept off the
-country server.
+The EU VAT Information Exchange System: turns a VAT number into the name and
+address it is registered to. This is the join the other sources need — ΚΗΜΔΗΣ,
+Διαύγεια and Μίτος all identify a company by its ΑΦΜ and never by its name.
+Full reference:
+[`packages/sources/gr/vies/DOCUMENTATION.md`](../packages/sources/gr/vies/DOCUMENTATION.md).
 
-- `ping`: echoes a message back with the server's clock, to confirm a connection works
+- `check_vat_number`: a VAT number (ΑΦΜ) to the company name and address it is registered to, and whether the registration is live
+- `list_member_states`: the 28 EU VAT registers and whether each is answering right now

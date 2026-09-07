@@ -85,7 +85,7 @@ export default function NavigationDesktop({
 
   const getDropdownType = (title: string): DropdownType => {
     if (title === "Product") return "product";
-    if (title === "Features") return "features";
+    if (title === "Use cases") return "useCases";
     if (title === "Resources") return "resources";
     return null;
   };
@@ -122,7 +122,7 @@ export default function NavigationDesktop({
             return (
               <div
                 key={item.title}
-                className={`group flex h-7 cursor-pointer items-center justify-center rounded px-3 text-center font-medium tracking-wider uppercase transition-all duration-300 ${
+                className={`group flex h-7 shrink-0 cursor-pointer items-center justify-center rounded px-3 text-center font-medium tracking-wider whitespace-nowrap uppercase transition-all duration-300 ${
                   activeDropdown === dropdownType
                     ? "bg-background text-foreground"
                     : "text-muted-foreground hover:bg-background hover:text-foreground"
@@ -153,7 +153,7 @@ export default function NavigationDesktop({
             <Link
               key={item.title}
               href={item.url}
-              className="group flex h-7 cursor-pointer items-center justify-center rounded px-3 text-center font-medium tracking-wider text-muted-foreground uppercase transition-all duration-300 hover:bg-background hover:text-foreground"
+              className="group flex h-7 shrink-0 cursor-pointer items-center justify-center rounded px-3 text-center font-medium tracking-wider whitespace-nowrap text-muted-foreground uppercase transition-all duration-300 hover:bg-background hover:text-foreground"
               onMouseEnter={() => handleDropdownEnter(null)}
             >
               <span className="flex items-center text-[10px]">

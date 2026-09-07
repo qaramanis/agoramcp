@@ -1,6 +1,6 @@
 /**
- * Footer content. Like `menu.ts`, every internal `url` is "#" — the pages don't
- * exist yet. External links point at real destinations.
+ * Footer content. Like `menu.ts`, an internal `href` of "#" is a page that does
+ * not exist yet. External links point at real destinations.
  */
 export type FooterLink = {
   label: string;
@@ -32,8 +32,8 @@ export const footerColumns: FooterColumn[] = [
     title: "Resources",
     className: "col-span-5 col-start-7 md:col-start-3 md:col-span-2",
     links: [
-      { label: "Documentation", href: "#" },
-      { label: "Status", href: "#" },
+      { label: "Documentation", href: "/documentation" },
+      { label: "Status", href: "/status" },
       { label: "Changelog", href: "#" },
       { label: "View live", href: "/live" },
       { label: "Request a country", href: "/country" },
@@ -43,8 +43,8 @@ export const footerColumns: FooterColumn[] = [
     title: "Legal",
     className: "col-span-5 col-start-1 md:col-start-5 md:col-span-2",
     links: [
-      { label: "Attribution", href: "#" },
-      { label: "Licences", href: "#" },
+      { label: "Attribution", href: "/licenses#attribution" },
+      { label: "Licences", href: "/licenses" },
       { label: "Privacy", href: "#" },
       { label: "Terms", href: "#" },
     ],

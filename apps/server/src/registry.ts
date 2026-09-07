@@ -12,7 +12,7 @@ import { datagovSource } from "@agoramcp/source-gr-datagov";
 import { diavgeiaSource } from "@agoramcp/source-gr-diavgeia";
 import { kimdisSource } from "@agoramcp/source-gr-kimdis";
 import { mitosSource } from "@agoramcp/source-gr-mitos";
-import { testSource } from "@agoramcp/source-gr-test";
+import { viesSource } from "@agoramcp/source-gr-vies";
 import { z } from "zod";
 
 /**
@@ -20,15 +20,22 @@ import { z } from "zod";
  * `packages/sources/{country}/{id}`, add it to this app's dependencies, and
  * import it here. The server itself needs no changes.
  */
-const SOURCES: readonly Source[] = [athensSource, datagovSource, diavgeiaSource, kimdisSource, mitosSource, testSource];
+const SOURCES: readonly Source[] = [
+  athensSource,
+  datagovSource,
+  diavgeiaSource,
+  kimdisSource,
+  mitosSource,
+  viesSource,
+];
 
 /**
  * Sources that stay off their country's server. Membership is otherwise
  * derived, so adding a source still costs one import — it joins its country
  * automatically, and this list is the escape hatch for the ones that should
- * not. `gr/test` proves the transport and has no upstream behind it.
+ * not — a source too noisy or too narrow to belong in its country's server.
  */
-const UNBUNDLED: readonly string[] = ["gr/test"];
+const UNBUNDLED: readonly string[] = [];
 
 /** Display names for the country servers. Anything unlisted falls back to its code. */
 const COUNTRY_NAMES: Record<string, string> = { gr: "Greece" };
