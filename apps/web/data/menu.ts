@@ -102,8 +102,8 @@ export const resourceItems: DropdownItem[] = [
   },
   {
     title: "Changelog",
-    description: "New sources and tools as they land",
-    url: "#",
+    description: "Every commit, newest first, with the version it landed at",
+    url: "/changelog",
     keywords: ["releases", "updates"],
   },
   {

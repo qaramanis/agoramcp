@@ -12,6 +12,7 @@ import { datagovSource } from "@agoramcp/source-gr-datagov";
 import { diavgeiaSource } from "@agoramcp/source-gr-diavgeia";
 import { kimdisSource } from "@agoramcp/source-gr-kimdis";
 import { mitosSource } from "@agoramcp/source-gr-mitos";
+import { noaSource } from "@agoramcp/source-gr-noa";
 import { viesSource } from "@agoramcp/source-gr-vies";
 import { z } from "zod";
 
@@ -26,6 +27,7 @@ const SOURCES: readonly Source[] = [
   diavgeiaSource,
   kimdisSource,
   mitosSource,
+  noaSource,
   viesSource,
 ];
 

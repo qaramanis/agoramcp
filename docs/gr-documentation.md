@@ -94,6 +94,17 @@ Full reference:
 - `search_organizations`: find a body in the procedures registry by name, VAT number or id
 - `get_organization`: a body's registry record — contact details, parent and sub-bodies
 
+## Σεισμοί — `noa`
+
+The Greek earthquake catalogue, kept by the National Observatory of Athens from
+the Hellenic Unified Seismic Network: roughly 60 located events a day, reviewed
+by an analyst, back to February 2011. Full reference:
+[`packages/sources/gr/noa/DOCUMENTATION.md`](../packages/sources/gr/noa/DOCUMENTATION.md).
+
+- `search_earthquakes`: find earthquakes by time, magnitude, depth and place — a bounding box or a radius around a point
+- `get_earthquake`: one earthquake with the quality of its solution — stations, azimuthal gap, how far the epicentre could be out, and whether an analyst confirmed it
+- `list_recent_earthquakes`: what has been located in the last day, newest first, with the largest called out
+
 ## VIES — `vies`
 
 The EU VAT Information Exchange System: turns a VAT number into the name and

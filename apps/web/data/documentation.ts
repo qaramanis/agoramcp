@@ -148,6 +148,13 @@ export const routes: Route[] = [
     boundary: "Four worked examples and the path of tools each takes. Illustrations, not reference.",
   },
   {
+    title: "Changelog",
+    href: "/changelog",
+    answers: "What changed, and when?",
+    boundary:
+      "Every commit in the repository, newest first, each with the version it landed at.",
+  },
+  {
     title: "Status",
     href: "/status",
     answers: "Is it answering right now?",

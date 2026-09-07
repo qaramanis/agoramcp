@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { contactLinks, footerColumns, type FooterLink } from "@/data/footer";
 import { Grid, gutterClass } from "@/components/layout/grid";
-import { loadVersion } from "@/db/queries";
+import { currentVersion } from "@/data/version";
 
 function LinkList({ links }: { links: FooterLink[] }) {
   return (
@@ -28,11 +28,13 @@ function LinkList({ links }: { links: FooterLink[] }) {
  * Sticky at the bottom of the viewport so the page scrolls off it — the last
  * section slides away and the footer is already there underneath.
  *
- * The version is the last row `pnpm db:version` wrote; without one — or
- * without a database — the slot is left out rather than filled with a guess.
+ * The version is the newest commit's, read through `data/version.ts` — the
+ * same call the changelog page opens with, so the two always agree. Before the
+ * first `pnpm db:changelog` there is none, and the slot is left out rather
+ * than filled with a guess.
  */
-export default async function Footer() {
-  const version = await loadVersion();
+export default function Footer() {
+  const version = currentVersion();
 
   return (
     <footer

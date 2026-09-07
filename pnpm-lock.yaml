@@ -35,6 +35,9 @@ importers:
       '@agoramcp/source-gr-mitos':
         specifier: workspace:*
         version: link:../../packages/sources/gr/mitos
+      '@agoramcp/source-gr-noa':
+        specifier: workspace:*
+        version: link:../../packages/sources/gr/noa
       '@agoramcp/source-gr-vies':
         specifier: workspace:*
         version: link:../../packages/sources/gr/vies
@@ -216,6 +219,22 @@ importers:
         version: 5.9.3
 
   packages/sources/gr/mitos:
+    dependencies:
+      '@agoramcp/core':
+        specifier: workspace:*
+        version: link:../../../core
+      zod:
+        specifier: ^4.5.2
+        version: 4.5.2
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.0
+        version: 26.4.0
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/sources/gr/noa:
     dependencies:
       '@agoramcp/core':
         specifier: workspace:*

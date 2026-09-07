@@ -22,14 +22,6 @@ export const metadata: Metadata = {
   description: "MCP servers over open government data.",
 };
 
-/**
- * The footer reads the version from the database, so the static pages are
- * regenerated once a minute rather than frozen at build: a `pnpm db:version`
- * shows within the minute. `/country` sets 0 and stays per request — the
- * lowest value on a route wins.
- */
-export const revalidate = 60;
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html

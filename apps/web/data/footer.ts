@@ -34,7 +34,7 @@ export const footerColumns: FooterColumn[] = [
     links: [
       { label: "Documentation", href: "/documentation" },
       { label: "Status", href: "/status" },
-      { label: "Changelog", href: "#" },
+      { label: "Changelog", href: "/changelog" },
       { label: "View live", href: "/live" },
       { label: "Request a country", href: "/country" },
     ],
