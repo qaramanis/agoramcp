@@ -28,10 +28,10 @@ function LinkList({ links }: { links: FooterLink[] }) {
  * Sticky at the bottom of the viewport so the page scrolls off it — the last
  * section slides away and the footer is already there underneath.
  *
- * The version is the newest commit's, read through `data/version.ts` — the
- * same call the changelog page opens with, so the two always agree. Before the
- * first `pnpm db:changelog` there is none, and the slot is left out rather
- * than filled with a guess.
+ * The version is the newest changelog entry's, read through `data/version.ts`
+ * — the same call the changelog page opens with, so the two always agree.
+ * While `data/changelog.ts` is empty there is none, and the slot is left out
+ * rather than filled with a guess.
  */
 export default function Footer() {
   const version = currentVersion();

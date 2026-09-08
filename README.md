@@ -149,7 +149,6 @@ pnpm --filter @agoramcp/web db:reset                # reverse everything
 pnpm --filter @agoramcp/web db:status               # what has run, what has not
 pnpm --filter @agoramcp/web db:make add_x_to_y      # scaffold a new migration
 pnpm --filter @agoramcp/web db:seed                 # every seeder; `db:seed countries` for one
-pnpm --filter @agoramcp/web db:version              # record the version the footer shows
 ```
 
 Each migration runs in a transaction with its own bookkeeping row, so one that
@@ -161,12 +160,12 @@ server session, which Neon's pooler does not promise.
 and marks the countries with a source mounted as supported. It is safe to run
 again: it upserts, and it never unmarks a country.
 
-`db:version` records the version the footer shows, `v.1.{countries}.{commits}`:
-the countries marked supported in the table, and the commits of the checkout
-it runs in — run it after pushing, so the count is the one GitHub shows. The
-table composes the string itself, and a row is only written when the version
-has moved. The site's static pages are regenerated once a minute, so a new
-version is visible within the minute of recording it.
+The version the footer shows, `v.1.{countries}.{commits}`, and the changelog
+behind it come from `apps/web/data/changelog.ts`, written by hand: one entry at
+the top, in the same commit as the change it describes. `countries` is how many
+have a source mounted, and `commits` is what `git rev-list --count HEAD` will
+say once that commit exists. Nothing generates the file, so the page never
+needs a commit of its own.
 
 ## Adding a source
 

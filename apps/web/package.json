@@ -13,9 +13,7 @@
     "db:reset": "tsx db/migrate.ts reset",
     "db:status": "tsx db/migrate.ts status",
     "db:make": "tsx db/migrate.ts make",
-    "db:seed": "tsx db/seed.ts",
-    "db:version": "tsx db/version.ts",
-    "db:changelog": "tsx db/changelog.ts"
+    "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {
     "lucide-react": "^1.35.0",

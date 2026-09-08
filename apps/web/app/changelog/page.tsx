@@ -8,7 +8,7 @@ import { currentRelease } from "@/data/version";
 export const metadata: Metadata = {
   title: "Changelog — agoramcp",
   description:
-    "Every commit in the repository, newest first, each with the version the project was at when it landed.",
+    "What changed in agoramcp, newest first, each entry with the version the project was at when it landed.",
 };
 
 export default function ChangelogPage() {
@@ -21,12 +21,13 @@ export default function ChangelogPage() {
         <Grid inset={false} className="w-full items-center gap-y-10">
           <div className="col-span-12 col-start-1 md:col-span-5">
             <h1 className="text-[2.5rem] leading-[1.2] font-medium tracking-tight text-foreground">
-              Every commit, in order.
+              What changed, and when.
             </h1>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-              The repository&apos;s own history, newest first, with nothing
-              rewritten for the occasion. What each entry says is what was
-              written when the work was done.
+              Written by hand, one entry per change worth a line, and
+              committed together with the work it describes. What each entry
+              says is what was written when the change was made, not a
+              summary made later.
             </p>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               The version in front of each one is the version the project stood
@@ -45,7 +46,7 @@ export default function ChangelogPage() {
         <ul className="col-span-8 col-start-1 mt-8 flex flex-col">
           {changelog.map((entry) => (
             <li
-              key={entry.sha}
+              key={entry.version}
               className="border-t border-panel-border/50 py-6 first:border-t-0 first:pt-0"
             >
               <Entry entry={entry} />
@@ -71,7 +72,7 @@ function Latest({ entry }: { entry: ChangelogEntry }) {
   );
 }
 
-/** One commit: its version and subject, the day it landed, then its message. */
+/** One entry: its version and title, the day it landed, then its paragraphs. */
 function Entry({ entry }: { entry: ChangelogEntry }) {
   return (
     <>
