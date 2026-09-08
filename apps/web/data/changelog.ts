@@ -29,11 +29,19 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: "v.1.1.15",
-    title: "Keep the changelog by hand",
+    version: "v.1.1.16",
+    title: "Rewrite every changelog entry from its commit's diff",
     body: [
-      "Remove the generator that wrote this page from git. `pnpm db:changelog` and `pnpm db:version` are gone, and so is the `versions` table they fed: the commit that committed the generated file was itself a new entry, so every update needed another commit, which needed another update.",
-      "The changelog is now `data/changelog.ts`, edited by hand and committed with the change it describes. The footer reads its top entry, so the version scheme is unchanged — the last part is still the number of commits in the repository.",
+      "Every entry below now describes what its commit changed, read from the diff rather than copied from the message: specific titles in place of \"Major changes\" and \"ui/ux updates\", and bodies that name the packages, tools, routes and scripts involved. Tool counts were checked against the tools files at those commits.",
+    ],
+    date: "2026-09-08",
+  },
+  {
+    version: "v.1.1.15",
+    title: "Keep the changelog by hand and drop the versions table",
+    body: [
+      "Delete `db/changelog.ts` and `db/version.ts`, the scripts that wrote this page from `git log` and recorded commit counts in a `versions` table, along with their `pnpm db:*` entries. A migration drops the table; its `down` recreates it.",
+      "`data/changelog.ts` is now written by hand and committed with the change it describes, and the `sha` field is gone. The footer and this page still read its top entry, so the `v.{major}.{countries}.{commits}` scheme is unchanged.",
     ],
     date: "2026-09-08",
   },
@@ -41,89 +49,115 @@ export const changelog: ChangelogEntry[] = [
     version: "v.1.1.13",
     title: "Add the NOA earthquake source and generate the changelog from git",
     body: [
-      "Add `packages/sources/gr/noa`: a client over the National Observatory of Athens FDSN event service, with `search_earthquakes` (time, magnitude, depth, bounding box or radius), `get_earthquake` — which reads QuakeML for the quality of the solution — and `list_recent_earthquakes`. CC-BY-4.0 and the Institute of Geodynamics attribution in `meta.ts`, short TTLs because seismicity is live. One import in `registry.ts`; documented in `docs/gr-documentation.md` and the package's `DOCUMENTATION.md`.",
-      "Replace the hand-written changelog with the repository's own history: `pnpm db:changelog` writes `data/changelog.ts` from git and the `versions` table, resolving each commit's version as it goes. /changelog becomes a flat list of commits, newest first, and gets its nav, footer and documentation-index links.",
-      "The footer now reads the version from `data/version.ts` instead of the database, so it and the changelog cannot disagree — dropping `latestVersion`/`loadVersion` and the layout's one-minute `revalidate`.",
+      "`packages/sources/gr/noa` reads the National Observatory of Athens `fdsnws-event` service with three tools: `search_earthquakes` (time, magnitude, depth, bounding box or radius), `get_earthquake`, which parses QuakeML for station count, azimuthal gap and analyst review, and `list_recent_earthquakes`. Search windows are capped at 31 days; `meta.ts` declares CC-BY-4.0 with the Institute of Geodynamics attribution and short TTLs.",
+      "`pnpm db:changelog` writes `data/changelog.ts` from `git log` and the `versions` table, and `/changelog` becomes one flat list, newest first. The footer reads the version from the new `data/version.ts` instead of the database, so `loadVersion` and the layout's `revalidate = 60` go.",
     ],
     date: "2026-09-07",
   },
   {
     version: "v.1.1.12",
-    title: "Animate page transitions across all routes",
-    body: [],
+    title: "Fade every navigation, not only the top-level ones",
+    body: [
+      "The root `template.tsx` keys its fade on the full pathname, so moving between catalogue countries, sources or use cases animates like moving between top-level pages. Search-parameter changes are left out, so the live console can rewrite its query without a blink.",
+    ],
     date: "2026-09-07",
   },
   {
     version: "v.1.1.11",
-    title: "Add VIES source and the site pages the nav pointed at",
+    title: "Add the VIES source and the pages the nav pointed at",
     body: [
-      "Replace the placeholder `gr/test` package with `gr/vies`: a client over the EU VAT Information Exchange System with `check_vat_number` and `list_member_states`, plus its licence and documentation. It joins the Greek country server, so `UNBUNDLED` is now empty.",
-      "Fill in the nav's dead links with real pages: /documentation, /status, /licenses and /changelog. The Features dropdown becomes Use cases, built from `data/use-cases.ts` so every row has a page at /use-cases/{slug}, and Resources lists the new pages instead of per-country sources.",
-      "Elsewhere: section heroes on /all, glossary terms in the search index, optional wrapping on `CodeBlock` and an anchor id on `Band`.",
+      "`packages/sources/gr/vies` replaces the `gr/test` placeholder: `check_vat_number` normalises an ΑΦΜ, validates its check digit and asks the EU VAT Information Exchange System, and `list_member_states` reports which member states are answering. With `gr/test` gone, `UNBUNDLED` is empty and VIES joins the Greek country server.",
+      "Four dead nav links become pages: `/documentation` (glossary, conventions and a route index from `data/documentation.ts`), `/status` (one live call per mounted registry), `/licenses` (sources grouped by licence with their attribution lines) and `/changelog`. The Features dropdown becomes Use cases, each row of `data/use-cases.ts` rendering at `/use-cases/[slug]`.",
+      "On `/all`, the Countries and Sources lists get a hero each and `CountryRow` and `SourceRow` share one `Row`. `CodeBlock` gains a `wrap` prop, `Band` an `id`, and search indexes the glossary under Vocabulary.",
     ],
     date: "2026-09-07",
   },
   {
     version: "v.1.1.10",
-    title: "Major changes",
+    title: "Add HTTP tool endpoints, a CKAN adapter and four Greek sources",
     body: [
-      "Add HTTP API and Greek data sources",
-      "Expose plain HTTP tool endpoints, add CKAN and procurement adapters, expand the Greek source registry, and document the new catalogue and API. Improve web directory pages, search, navigation, footer versioning, and deployment configuration.",
+      "The server answers plain HTTP beside MCP: `GET|POST /{country}/api/{source}/{tool}` calls a tool with query values coerced to its schema, undeclared parameters rejected with a 400, and an envelope carrying `publisher`, `license`, `attribution` and `upstreamUrl` around `data`. Both transports share `call.ts` for the credential check, TTL and logging, and successful GETs carry a `Cache-Control` matching the tool's TTL.",
+      "`packages/ckan` is a reusable adapter with seven tools over any CKAN portal, reading CSV, TSV, JSON and GeoJSON resources outside the datastore. `gr/datagov` and `gr/athens` are it pointed at data.gov.gr and the City of Athens; `gr/kimdis` (public contracts) and `gr/mitos` (public-service procedures) have their own clients, seven tools each.",
+      "The web app gains the catalogue at `/all`, `/all/[country]` and `/all/[country]/[source]`, rendered from the server's `GET /` with a full per-tool reference, an `/api` page documenting the HTTP contract, and a rewritten search over menu, footer, mounts, agents and error codes. A `versions` table and `db:version` script put `v.1.{countries}.{commits}` in the footer, and the README documents the API and `VERCEL_EXPERIMENTAL_BACKENDS=1` for the server project.",
     ],
     date: "2026-09-01",
   },
   {
     version: "v.1.1.9",
-    title: "Add Postgres-backed country request tracking",
-    body: [],
+    title: "Store country requests in Postgres behind a server action",
+    body: [
+      "`apps/web/db/` adds a `postgres` client, a Laravel-style migration runner (`migrate`, `rollback --step=N`, `reset`, `status`, `make`) with a `migrations` table, a seeder runner and migrations for `countries` and `requests`, plus the `db:*` scripts in `package.json`.",
+      "The `/country` form submits to a `requestCountry` server function and reports `created`, `duplicate`, `supported`, `unknown` or `error` with the live count. A visitor is a salted SHA-256 of address and user agent (`REQUEST_HASH_SALT`), so each counts once per country; the placeholder `requestCounts` map is deleted.",
+    ],
     date: "2026-09-01",
   },
   {
     version: "v.1.1.8",
-    title: "Document Railway deployment setup and support dynamic web ports",
-    body: [],
+    title: "Split the server listener into serve.ts and document deployment",
+    body: [
+      "`apps/server/src/index.ts` now exports the Hono app; the `serve()` call and the boot-time `warm` loop move to `serve.ts`, which `dev` and `start` run, so a host that owns the listener imports the app alone. `railway.json` configures the Railpack build and `/health` check, the web `start` honours `PORT`, and the README gains a Deploying section for the two Vercel projects.",
+    ],
     date: "2026-09-01",
   },
   {
     version: "v.1.1.7",
-    title: "Sort catalogue providers alphabetically by name",
-    body: [],
+    title: "Sort each country's sources alphabetically in the catalogue",
+    body: [
+      "`loadCatalogue` orders a country's providers by display name, case- and accent-insensitive, instead of the registry's import order.",
+    ],
     date: "2026-09-01",
   },
   {
     version: "v.1.1.6",
-    title: "Add country-level MCP bundles and web quickstart guides",
-    body: [],
+    title: "Mount per-country MCP bundles and add the /mcp and /quickstart pages",
+    body: [
+      "`/{country}/mcp` serves every source of a country in one server, tool names prefixed with their source; `defineBundle` in `packages/core` checks at boot that no two sources claim the same name. `Source` gains a `warm` hook run at boot and `SourceTool` an `example` parsed against its own schema.",
+      "Diavgeia grows from 8 to 17 tools, among them `search_decisions_advanced`, `get_decision_text` (PDF text via `unpdf`), `get_decision_history` and `search_dictionary`, with a `warm` that prefetches the body register; `docs/gr-documentation.md` indexes them.",
+      "`/mcp` and `/quickstart` print connection snippets for Claude Code, Claude, Codex, Cursor, Windsurf, VS Code and any MCP client. `/live` builds its tool list from the server's `GET /` through the new `data/catalogue.ts`, with Greek names transliterated by `data/greeklish.ts`, instead of a hand-written provider list.",
+    ],
     date: "2026-09-01",
   },
   {
     version: "v.1.1.5",
-    title: "ui/ux updates",
-    body: [],
+    title: "Add a page-wide WebGL starfield and make the eclipse transparent",
+    body: [
+      "`components/background/starfield.tsx` draws a full-page star canvas at 30fps, pausing when the tab is hidden and rendering one static frame under `prefers-reduced-motion`; it is imported in the layout but still commented out. The eclipse shader drops its own stars and emits premultiplied alpha, so the layer behind it shows through. Text selection takes the accent colour.",
+    ],
     date: "2026-08-31",
   },
   {
     version: "v.1.1.4",
-    title: "initial steps - first sources from Diavgeia -> Greece --- - navigation, UI, footer - landing page - live requests page - request a country page",
-    body: [],
+    title: "Add the Diavgeia source with 8 tools, the site shell and /live",
+    body: [
+      "`packages/sources/gr/diavgeia` reads `diavgeia.gov.gr/opendata` with `search_decisions`, `get_decision`, `list_decision_types`, `search_organizations`, `get_organization`, `list_organization_units`, `get_signer` and `list_thematic_categories`; `meta.ts` records CC-BY-4.0, the Greek attribution and per-tool TTLs, and `DOCUMENTATION.md` covers the upstream API.",
+      "The web app gets its shell: `Navigation` and `Footer` in the root layout, a dark theme with one accent colour and JetBrains Mono with the Greek subset, the shared 12-column `Grid`, and a landing hero with a WebGL eclipse that tracks the cursor above a grid of publisher logos.",
+      "`/live` lets a visitor pick a country, source and tool, edit the arguments and read the real response, proxied through `app/api/mcp/route.ts`, which rebuilds the arguments from `data/playground.ts` and rejects unknown endpoints or tools before forwarding. `/country` is a request-a-country form over the ISO list.",
+    ],
     date: "2026-08-31",
   },
   {
     version: "v.1.1.3",
-    title: "initial structure setup commit",
-    body: [],
+    title: "Split into a pnpm monorepo with a Hono MCP server and core package",
+    body: [
+      "The Next.js app moves to `apps/web`; `packages/core` holds the `Source` contract (`defineSource`, `defineTool`), an HTTP client, an in-memory cache, a logger and the `AgoraError` hierarchy for invalid input, missing credentials, not found, rate limit and upstream failure.",
+      "`apps/server` is a Hono app that mounts every registered source at `/{country}/mcp/{source}` over Streamable HTTP, building a stateless `McpServer` per request, with CORS, request-id logging, a per-client rate limiter and `registry.ts` as the single wiring point. `packages/sources/gr/test` ships one `ping` tool as the reference source shape.",
+    ],
     date: "2026-08-29",
   },
   {
     version: "v.1.1.2",
-    title: "next cleanup",
-    body: [],
+    title: "Strip the create-next-app template",
+    body: [
+      "Remove the template page, favicon and Vercel SVGs, title the app agoramcp and cut the README to the two commands that run it. `globals.css` applies the Geist font through the Tailwind theme instead of Arial.",
+    ],
     date: "2026-08-29",
   },
   {
     version: "v.1.1.1",
-    title: "Initial commit from Create Next App",
-    body: [],
+    title: "Scaffold the web app with create-next-app",
+    body: [
+      "A fresh Next.js App Router project with Tailwind 4, ESLint and a pnpm workspace file, still showing the generator's template page.",
+    ],
     date: "2026-08-29",
   },
 ];
