@@ -29,6 +29,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.17",
+    title: "Replace the landing page's placeholder sections with the four that ship",
+    body: [
+      "The Sources subtext now counts what the server has mounted, read through `loadDirectory` the way `/all` reads it, so it moves when a source is mounted rather than when a logo is added; the page renders per request (`revalidate = 0`) for the same reason `/all` does, and the sentence stands without the number when the server is unreachable.",
+      "`components/use-cases/worked-question.tsx` and `question-tabs.tsx` turn the Tools placeholder into Questions: the four use cases of `data/use-cases.ts` as a vertical tab list on four of the page's columns, and the selected one worked through on the last five — the prompt as typed, the tools it calls in order, the registries that answer it, and links to the walkthrough and `/live`. Every panel is rendered and stacked in one cell so nothing moves when the selection changes; the panel fades out and back in over 300 ms, the list numbers its rows itself (`Example 1:` and on) so the data keeps plain titles, and the arrow keys move through the list.",
+      "`components/attribution/attribution.tsx` turns the Attribution placeholder into three facts on the same four-one-five columns: official registries only, answering right now, and the licence that travels with the data, the last shown as the HTTP envelope excerpt built from `data/licenses.ts` with Diavgeia's attribution line verbatim. `components/exit/exit.tsx` closes the page with a hero-sized \"Connect to Agora now\" and one Get started button to `/quickstart`, centred on the content width with twice the standard band's padding — the one band that does not lay out on the columns.",
+      "The root layout marks `<html>` with `data-scroll-behavior=\"smooth\"`, which Next asks for before it honours the `scroll-behavior: smooth` in `globals.css` on navigation.",
+    ],
+    date: "2026-09-10",
+  },
+  {
     version: "v.1.1.16",
     title: "Rewrite every changelog entry from its commit's diff",
     body: [

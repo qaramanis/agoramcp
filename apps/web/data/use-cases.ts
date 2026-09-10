@@ -36,17 +36,30 @@ export type UseCase = {
   sources: UseCaseSource[];
 };
 
-const DIAVGEIA: UseCaseSource = { id: "diavgeia", country: "gr", name: "Diavgeia" };
+const DIAVGEIA: UseCaseSource = {
+  id: "diavgeia",
+  country: "gr",
+  name: "Diavgeia",
+};
 const KIMDIS: UseCaseSource = { id: "kimdis", country: "gr", name: "KIMDIS" };
-const DATAGOV: UseCaseSource = { id: "datagov", country: "gr", name: "data.gov.gr" };
-const ATHENS: UseCaseSource = { id: "athens", country: "gr", name: "Dimos Athinaion" };
+const DATAGOV: UseCaseSource = {
+  id: "datagov",
+  country: "gr",
+  name: "data.gov.gr",
+};
+const ATHENS: UseCaseSource = {
+  id: "athens",
+  country: "gr",
+  name: "Dimos Athinaion",
+};
 const MITOS: UseCaseSource = { id: "mitos", country: "gr", name: "Mitos" };
 
 export const useCases: UseCase[] = [
   {
     slug: "public-spending",
     title: "Track public spending",
-    summary: "Follow a decision from the body that signed it to the sum it commits",
+    summary:
+      "Follow a decision from the body that signed it to the sum it commits",
     blurb:
       "Every act the Greek state signs is published with a unique ADA and a signed PDF. That makes a spending question answerable end to end: which body, which decision, how much, and the document to check it against.",
     prompt:
@@ -110,7 +123,8 @@ export const useCases: UseCase[] = [
   {
     slug: "open-data",
     title: "Query an open dataset",
-    summary: "Search 22,000 datasets, then read the rows without downloading them",
+    summary:
+      "Search 22,000 datasets, then read the rows without downloading them",
     blurb:
       "The national catalogue holds datasets from 370 publishers and the City of Athens portal several hundred more. The tabular ones are queryable in place, so a question about the numbers does not begin with a download.",
     prompt:
@@ -137,7 +151,8 @@ export const useCases: UseCase[] = [
   {
     slug: "public-services",
     title: "Look up a public service",
-    summary: "The documents, steps and body behind a procedure, as the state defines it",
+    summary:
+      "The documents, steps and body behind a procedure, as the state defines it",
     blurb:
       "Mitos is the state's own register of what its procedures are: the papers each one asks for, the steps it runs through, the body that owns it and how long it takes. It answers the bureaucratic question directly rather than by reading a circular.",
     prompt:
