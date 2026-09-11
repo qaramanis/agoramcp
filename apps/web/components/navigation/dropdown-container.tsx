@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Code2, LayoutDashboard, Server } from "lucide-react";
+import { Code2, Library, Server } from "lucide-react";
 import {
   productCards,
   productItems,
@@ -13,7 +13,7 @@ import {
 } from "@/data/menu";
 import { MIN_QUERY, searchContent } from "@/data/search";
 
-const productIcons = [Server, Code2, LayoutDashboard];
+const productIcons = [Server, Code2, Library];
 
 export type DropdownType =
   "product" | "useCases" | "resources" | "search" | null;

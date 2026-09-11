@@ -29,6 +29,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.18",
+    title: "Give the catalogue the Dashboard's row in the nav",
+    body: [
+      "The Product dropdown's Dashboard placeholder — two thirds of it the catalogue, the rest usage that would need accounts — is now Catalogue: a row to `/all` with a `Library` icon, and \"all sources\", \"registries\" and \"directory\" as its search keywords. The footer's Product column makes the same swap, so the catalogue is linked from the footer for the first time.",
+      "The Resources dropdown drops its \"View all\" card, whose destination the new row covers. \"Request a country\" is the one card left and stands the full height of the four rows beside it — the column's flex layout already did that once the card had no sibling.",
+    ],
+    date: "2026-09-11",
+  },
+  {
     version: "v.1.1.17",
     title: "Replace the landing page's placeholder sections with the four that ship",
     body: [

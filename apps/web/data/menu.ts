@@ -54,10 +54,11 @@ export const productItems: IconItem[] = [
     keywords: ["rest", "curl"],
   },
   {
-    title: "Dashboard",
-    description: "Browse sources, tools and usage",
-    url: "#",
+    title: "Catalogue",
+    description: "Every country, source and tool, with its arguments",
+    url: "/all",
     iconColor: "#22c55e",
+    keywords: ["all sources", "registries", "directory"],
   },
 ];
 
@@ -120,14 +121,12 @@ export const resourceItems: DropdownItem[] = [
   },
 ];
 
+/**
+ * One card, so it stands the full height of the list beside it. The
+ * catalogue used to sit here as "View all" and now has a row in the product
+ * panel instead.
+ */
 export const resourceCards: PanelCard[] = [
-  {
-    title: "View all",
-    description: "Every available source in one catalogue",
-    url: "/all",
-    // images.unsplash.com/photo-1747661380842-9a6d484cde4a
-    image: "/cards/all.webp",
-  },
   {
     title: "Request a country",
     description: "Want your country supported? Let us know.",

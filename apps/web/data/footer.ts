@@ -24,7 +24,7 @@ export const footerColumns: FooterColumn[] = [
     links: [
       { label: "MCP", href: "/mcp" },
       { label: "API", href: "/api" },
-      { label: "Dashboard", href: "#" },
+      { label: "Catalogue", href: "/all" },
       { label: "Quickstart", href: "/quickstart" },
     ],
   },
