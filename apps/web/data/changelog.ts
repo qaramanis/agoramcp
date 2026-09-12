@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.19",
+    title: "Build the footer from the nav and add the Privacy and Terms pages",
+    body: [
+      "`data/footer.ts` now builds its Product and Resources columns from the nav's own panels, rows then cards, the way `useCaseItems` is built from `data/use-cases.ts` — so the two cannot drift. View live moves to Product and Licences joins Resources as a result.",
+      "Legal is down to Privacy and Terms, each now a page: `/privacy` says what the site and the servers see and keep, `/terms` whose data it is and what is promised. Both are text in `data/legal.ts` rendered by `components/legal/legal-page.tsx`, with the hero and band of `/licenses`. Attribution and Licences leave the column; the licences page is under Resources.",
+      "The Contact column is commented out, in the footer and in the search index, until it has real destinations. `formatDay` moves to `data/format.ts` for the legal pages' last-updated line.",
+    ],
+    date: "2026-09-12",
+  },
+  {
     version: "v.1.1.18",
     title: "Give the catalogue the Dashboard's row in the nav",
     body: [

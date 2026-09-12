@@ -10,7 +10,7 @@ import { agents } from "./agents";
 import { ENVELOPE, ERROR_CODES } from "./api";
 import { requestCountries, servedCountries } from "./countries";
 import { glossary } from "./documentation";
-import { contactLinks, footerColumns, type FooterLink } from "./footer";
+import { /* contactLinks, */ footerColumns, type FooterLink } from "./footer";
 import { mounts } from "./mcp";
 import {
   productCards,
@@ -81,7 +81,8 @@ function fromFooter(): SearchResult[] {
     ...footerColumns.flatMap((column) =>
       column.links.map((item) => link(item, column.title)),
     ),
-    ...contactLinks.map((item) => link(item, "Contact")),
+    // Commented out with the column itself in `components/footer/footer.tsx`.
+    // ...contactLinks.map((item) => link(item, "Contact")),
   ];
 }
 

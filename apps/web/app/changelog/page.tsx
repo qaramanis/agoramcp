@@ -3,6 +3,7 @@ import { Grid, gutterClass } from "@/components/layout/grid";
 import Band from "@/components/mcp/band";
 import { Ticks } from "@/components/mcp/inline";
 import { changelog, type ChangelogEntry } from "@/data/changelog";
+import { formatDay } from "@/data/format";
 import { currentRelease } from "@/data/version";
 
 export const metadata: Metadata = {
@@ -104,14 +105,4 @@ function Title({ entry }: { entry: ChangelogEntry }) {
       {entry.title}
     </p>
   );
-}
-
-/** "7 September 2026" — written out, and never relative. */
-function formatDay(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 }

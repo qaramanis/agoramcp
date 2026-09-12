@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { contactLinks, footerColumns, type FooterLink } from "@/data/footer";
+import { /* contactLinks, */ footerColumns, type FooterLink } from "@/data/footer";
 import { Grid, gutterClass } from "@/components/layout/grid";
 import { currentVersion } from "@/data/version";
 
@@ -70,14 +70,16 @@ export default function Footer() {
             </div>
           ))}
 
-          {/* Contact sits in columns 7–9 on desktop and drops to its
-              own full-width row below md, where the grid is only two wide. */}
+          {/* Contact is commented out for now. It sits in columns 7–9 on
+              desktop and drops to its own full-width row below md, where the
+              grid is only two wide.
           <div className="col-span-12 col-start-1 flex flex-col md:col-span-3 md:col-start-7">
             <h6 className="mb-4 text-[15px] font-medium tracking-tight text-background">
               Contact
             </h6>
             <LinkList links={contactLinks} />
           </div>
+          */}
         </Grid>
       </div>
 
