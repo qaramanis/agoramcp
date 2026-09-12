@@ -103,14 +103,17 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
    switches the pipeline to esbuild bundling, which resolves both.
 3. **Variables.**
    - `server`: `VERCEL_EXPERIMENTAL_BACKENDS=1` (required, see step 2), then
-     `CORS_ORIGINS` and any source tokens from `.env.example` as needed.
+     `CORS_ORIGINS`, `DATABASE_URL` (the web project's pooled string, for the
+     status history — see [Configuration](#configuration)) and any source
+     tokens from `.env.example` as needed.
      `PORT` and `HOST` do not apply; Vercel owns the listener, and a
      non-integer `PORT`, `RATE_LIMIT_PER_MINUTE` or `CACHE_MAX_ENTRIES` throws
      at load.
    - `web`: `NEXT_PUBLIC_MCP_BASE_URL` and `MCP_SERVER_URL`, both the server
      project's production URL. The first is inlined at build time, so redeploy
      `web` if that URL ever changes. Plus `DATABASE_URL` (Neon's pooled
-     string) and `REQUEST_HASH_SALT` for `/country` — see [Database](#database).
+     string) and `REQUEST_HASH_SALT` for `/country` — see [Database](#database) —
+     and `CRON_SECRET` for the status cron.
 
 One dev dependency exists for Vercel's sake: `apps/server` lists `undici-types`
 because Vercel type-checks the entry with a resolver that does not follow
@@ -203,6 +206,52 @@ address, licence default and examples. A second CKAN is the same few lines.
 Copy `.env.example` to `.env`. Everything has a working default except the
 per-source API tokens, and a source with missing credentials fails with a clear
 message rather than breaking the server.
+
+### Logging
+
+The server writes one JSON object per line to stdout. Every line carries
+`time`, `level`, `message` (the event) and `service`; every line written while
+answering a request also carries `requestId`, the same value the caller gets
+back as `x-request-id`, so one request's lines can be pulled together in any
+log viewer. Lines from a call carry `transport` (`mcp` or `api`) and `mount`
+(`gr` for the country server, `gr/vies` for a source's own), and `probe: true`
+when the status page's check made the call.
+
+| event | level | when |
+|---|---|---|
+| `request` | info | Every HTTP request: method, path, status, duration, the caller's address and user agent. On an MCP mount also `rpcMethod` — `initialize`, `tools/list`, `tools/call` — with the client's name and version on `initialize`, and for a `tools/call` the `source` and `tool` it resolved to; a qualified name on the country server is resolved to the registry that answers it. |
+| `tool.ok` | info | The handler returned: `source`, `tool`, `args`, `durationMs`, `resultBytes`, and `cache` (`gets` and `hits`). Logged as a warning with `slow: true` past `LOG_SLOW_TOOL_MS`. |
+| `tool.failed` | info · warn · error | The handler threw. `error` carries the `AgoraError`'s `code`, `status`, `retryable`, `details` and `cause`; a stack only when the error was not one a source throws on purpose. `warn` for an upstream that is down, rate-limiting or unconfigured; `info` for `not_found` and `invalid_input`, which are the caller's; `error` for anything unexpected. |
+| `tool.aborted` | info | The caller disconnected before the handler finished. |
+| `tool.rejected` | info | A call refused before any handler ran: on an MCP mount an unknown tool name or arguments the schema would not take, on the API a query or body that failed strict validation. `reason` is the message the caller was sent. |
+| `request.rejected` | warn | The MCP transport refused the request itself — the wrong `Accept` or `Content-Type`, a body that is not JSON — and its own 4xx was sent. |
+| `mcp.protocol_error` | warn | The MCP SDK reported an error of its own, such as a reply it could not send. |
+| `record.failed` | warn | A call's outcome could not be written to the database (below). |
+| `tool.start` | debug | The handler is about to run, with the arguments. Off at the default level; its one use is to leave a trace of a call the host kills before the outcome line is written. |
+
+`LOG_LEVEL` sets the threshold (`debug`, `info`, `warn`, `error`, `silent`).
+`LOG_SLOW_TOOL_MS` (default 10000) is the slow threshold. `LOG_TOOL_ARGS`
+(default on) puts the validated arguments on the `tool.*` lines, cut to a
+preview past 2 KB; turn it off where the log store must not hold personal
+data — a VAT number is personal data for a sole trader.
+
+### Call records and the status history
+
+With `DATABASE_URL` set on the server, every finished call also becomes one
+row in the web app's `tool_calls` table (`apps/web/db/migrations`): when,
+which source and tool, the transport, whether the handler returned, the
+error's code when it did not, the duration and the request id. Never the
+arguments and never an address. The insert runs off the response path and a
+failure is a `record.failed` line, never a failed call.
+
+`/status` reads those rows as each source's last 90 days. Beside the real
+calls, the web app's cron (`apps/web/vercel.json`, every ten minutes, at
+`/api/cron/status`, let in by `CRON_SECRET`) makes one call per registry
+through the public API the way the page itself does and writes the outcome as
+a `probe` row, so a quiet day is not a blank one and a stretch when the server
+itself was unreachable is recorded as one. The same cron drops rows older than
+90 days. A check the page or the cron makes is sent with `x-agoramcp-probe`,
+which the server logs but does not record — the cron writes that row itself.
 
 ## Licensing
 

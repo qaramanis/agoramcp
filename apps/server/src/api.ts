@@ -3,6 +3,7 @@ import {
   NotFoundError,
   RateLimitError,
   isAgoraError,
+  sourceKey,
   toolErrorMessage,
   ttlFor,
   type AnySourceTool,
@@ -98,13 +99,16 @@ export async function handleToolCall(
   tool: AnySourceTool,
   deps: ToolDeps,
 ): Promise<Response> {
+  c.set("call", { source: sourceKey(source), tool: tool.name });
+
   const raw = c.req.method === "POST" ? await readJsonBody(c) : coerceQuery(tool, c.req.queries());
-  if (raw instanceof InvalidInputError) return apiError(c, raw);
+  if (raw instanceof InvalidInputError) return rejected(c, deps, raw);
 
   const parsed = z.strictObject(tool.inputSchema).safeParse(raw);
   if (!parsed.success) {
-    return apiError(
+    return rejected(
       c,
+      deps,
       new InvalidInputError(z.prettifyError(parsed.error), {
         details: {
           issues: parsed.error.issues.map((issue) => ({
@@ -139,6 +143,17 @@ export async function handleToolCall(
   } catch (error) {
     return apiError(c, error);
   }
+}
+
+/**
+ * A call refused before the handler ran: the arguments did not fit. Logged
+ * under the same event the MCP mounts use for the SDK's own refusals, so a
+ * tool that keeps being called wrongly shows up whichever door it was tried
+ * at — the fix is the same tool description either way.
+ */
+function rejected(c: Context, deps: ToolDeps, error: InvalidInputError): Response {
+  deps.logger.info("tool.rejected", { ...c.get("call"), reason: error.message, ...error.details });
+  return apiError(c, error);
 }
 
 /**

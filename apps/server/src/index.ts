@@ -2,14 +2,24 @@ import { StreamableHTTPTransport } from "@hono/mcp";
 import { NotFoundError, createLogger, createMemoryCache } from "@agoramcp/core";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { apiError, describeCountryApi, describeSourceApi, findTool, handleToolCall } from "./api.ts";
-import type { ToolDeps } from "./call.ts";
+import type { ToolDeps, Transport } from "./call.ts";
 import { loadConfig } from "./config.ts";
-import { createBundleServer, createSourceServer, SERVER_VERSION } from "./mcp.ts";
-import { requestLogger } from "./middleware/logging.ts";
+import { createBundleServer, createSourceServer, SERVER_VERSION, type CallTrace } from "./mcp.ts";
+import { PROBE_HEADER, requestLogger, type CallSummary } from "./middleware/logging.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
-import { apiPath, buildBundles, buildRegistry, describeBundles, describeRegistry } from "./registry.ts";
+import { createCallRecorder } from "./record.ts";
+import {
+  apiPath,
+  buildBundles,
+  buildRegistry,
+  describeBundles,
+  describeRegistry,
+  resolveBundleTool,
+} from "./registry.ts";
+import { calledToolName, summariseRpc } from "./rpc.ts";
 
 const config = loadConfig();
 const logger = createLogger({ level: config.logLevel, base: { service: "agoramcp" } });
@@ -17,7 +27,15 @@ const cache = createMemoryCache({ maxEntries: config.cacheMaxEntries });
 const registry = buildRegistry();
 const bundles = buildBundles(registry);
 
-const deps: ToolDeps = { cache, logger, env: process.env };
+/** Where each call's outcome is kept for the status history — nowhere, without a database. */
+const record = config.databaseUrl ? createCallRecorder(config.databaseUrl, logger) : undefined;
+
+/** What every call shares. `requestDeps` adds what one request is. */
+const shared = {
+  cache,
+  env: process.env,
+  log: { slowToolMs: config.slowToolMs, toolArgs: config.logToolArgs },
+};
 
 const app = new Hono();
 
@@ -76,7 +94,12 @@ app.all("/:country/mcp/:source", async (c) => {
 
   if (!source) return notMounted(c, "source", key);
 
-  return runServer(c, key, createSourceServer(source, deps));
+  return runServer(
+    c,
+    key,
+    (name) => (source.tools.some((tool) => tool.name === name) ? { source: key, tool: name } : undefined),
+    (deps, trace) => createSourceServer(source, deps, trace),
+  );
 });
 
 /**
@@ -90,7 +113,12 @@ app.all("/:country/mcp", async (c) => {
 
   if (!bundle) return notMounted(c, "country", country);
 
-  return runServer(c, country, createBundleServer(bundle, deps));
+  return runServer(
+    c,
+    country,
+    (name) => resolveBundleTool(bundle, name),
+    (deps, trace) => createBundleServer(bundle, deps, trace),
+  );
 });
 
 /**
@@ -117,11 +145,12 @@ app.get("/:country/api/:source", (c) => {
 });
 
 app.on(["GET", "POST"], "/:country/api/:source/:tool", async (c) => {
+  const key = `${c.req.param("country")}/${c.req.param("source")}`;
   const found = findTool(registry, c.req.param("country"), c.req.param("source"), c.req.param("tool"));
 
   if (found instanceof NotFoundError) return apiError(c, found);
 
-  return handleToolCall(c, found.source, found.tool, deps);
+  return handleToolCall(c, found.source, found.tool, requestDeps(c, "api", key));
 });
 
 // Anything but the two verbs above: say which verbs there are, as JSON like
@@ -141,10 +170,56 @@ app.all("/:country/api/:source/:tool", (c) => {
 });
 
 /**
+ * The deps for one request: what every call shares, plus the request's own
+ * logger — already carrying its id — stamped with how and where the call
+ * arrived. The status probe is logged like any call and marked as one, but
+ * not recorded: the probe writes its own row, and would otherwise count
+ * twice.
+ */
+function requestDeps(c: Context, transport: Transport, mount: string): ToolDeps {
+  const probe = c.req.header(PROBE_HEADER) !== undefined;
+
+  return {
+    ...shared,
+    logger: c.get("logger").child({ transport, mount, ...(probe ? { probe: true } : {}) }),
+    transport,
+    mount,
+    requestId: c.get("requestId"),
+    ...(record && !probe ? { record } : {}),
+  };
+}
+
+/**
  * One request, one server. The transport is stateless — no session to
  * resume — so the instance is torn down as soon as the reply is buffered.
+ *
+ * The body is read here first and handed to the transport parsed, so the
+ * request line can say which JSON-RPC method this POST was and, for a
+ * `tools/call`, which source and tool it named. `resolve` is the mount's own
+ * reading of a tool name — qualified on a country server, bare on a source's.
  */
-async function runServer(c: Context, mount: string, server: McpServer) {
+async function runServer(
+  c: Context,
+  mount: string,
+  resolve: (name: string) => CallSummary | undefined,
+  build: (deps: ToolDeps, trace: CallTrace) => McpServer,
+) {
+  const log = c.get("logger");
+
+  // A body that is not JSON is left for the transport to refuse in its own words.
+  const body: unknown = await c.req.json().catch(() => undefined);
+  const rpc = summariseRpc(body);
+  if (rpc) c.set("rpc", rpc);
+
+  const calledName = calledToolName(body);
+  const call = calledName === undefined ? undefined : resolve(calledName);
+  if (call) c.set("call", call);
+
+  const trace: CallTrace = { toolCalls: 0 };
+  const server = build(requestDeps(c, "mcp", mount), trace);
+  // Otherwise a failure to send a reply, or a message the SDK cannot place, is dropped silently.
+  server.server.onerror = (error) => log.warn("mcp.protocol_error", { mount, error });
+
   const transport = new StreamableHTTPTransport({
     // Stateless: no session to resume, so every request stands alone.
     sessionIdGenerator: undefined,
@@ -156,11 +231,39 @@ async function runServer(c: Context, mount: string, server: McpServer) {
   await server.connect(transport);
 
   try {
-    return (await transport.handleRequest(c)) ?? c.body(null, 204);
+    const response = (await transport.handleRequest(c, body)) ?? c.body(null, 204);
+
+    // A `tools/call` that never reached a handler was refused by the SDK —
+    // a name it does not know, or arguments its schema would not take — and
+    // answered as an ordinary result, so nothing else would have said so.
+    if (calledName !== undefined && trace.toolCalls === 0) {
+      log.info("tool.rejected", {
+        transport: "mcp",
+        mount,
+        ...call,
+        tool: call?.tool ?? calledName,
+        reason: await rejection(response),
+      });
+    }
+
+    return response;
   } finally {
     await server.close().catch((error: unknown) => {
-      logger.warn("server.close failed", { mount, error });
+      log.warn("server.close failed", { mount, error });
     });
+  }
+}
+
+/** The SDK's own explanation, from the buffered reply. */
+async function rejection(response: Response): Promise<string | undefined> {
+  try {
+    const payload = (await response.clone().json()) as {
+      result?: { content?: { text?: string }[] };
+      error?: { message?: string };
+    };
+    return payload.result?.content?.[0]?.text ?? payload.error?.message;
+  } catch {
+    return undefined;
   }
 }
 
@@ -175,13 +278,38 @@ function notMounted(c: Context, what: string, key: string) {
   );
 }
 
-app.onError((error, c) => {
-  logger.error("unhandled", { path: c.req.path, error });
+app.onError(async (error, c) => {
+  const log = c.get("logger") ?? logger;
+
+  // The transport's own refusals — the wrong Accept, the wrong Content-Type,
+  // a body that is not JSON — arrive as exceptions carrying the reply they
+  // want sent. Send it, and say so: a 4xx of theirs is not a 500 of ours.
+  if (error instanceof HTTPException) {
+    const response = error.getResponse();
+    log.warn("request.rejected", {
+      path: c.req.path,
+      status: response.status,
+      reason: error.message || (await messageOf(response)),
+    });
+    return response;
+  }
+
+  log.error("unhandled", { path: c.req.path, error });
   return c.json(
     { jsonrpc: "2.0", error: { code: -32603, message: "Internal server error." }, id: null },
     500,
   );
 });
+
+/** The reason in a JSON-RPC error reply, when the exception carries one instead of a message. */
+async function messageOf(response: Response): Promise<string | undefined> {
+  try {
+    const body = (await response.clone().json()) as { error?: { message?: string } };
+    return body.error?.message;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Default export so a host that owns the listener can mount the app as-is:

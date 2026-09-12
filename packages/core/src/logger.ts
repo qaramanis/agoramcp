@@ -1,3 +1,5 @@
+import { isAgoraError } from "./errors.ts";
+
 export type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
 
 const LEVEL_RANK: Record<LogLevel, number> = {
@@ -27,11 +29,35 @@ export interface LoggerOptions {
   write?: (line: string) => void;
 }
 
+/**
+ * An error as a line can carry it. An `AgoraError` is a failure a source
+ * raised on purpose: its code, status and details say what happened, and a
+ * stack would only say where the source chose to throw. Anything else is
+ * unexpected, and there the stack is the one thing worth having. Either way
+ * the cause is reduced to a sentence — enough to name the root, never a
+ * second stack.
+ */
 function serialize(value: unknown): unknown {
+  if (isAgoraError(value)) {
+    return {
+      name: value.name,
+      message: value.message,
+      code: value.code,
+      status: value.status,
+      retryable: value.retryable,
+      details: value.details,
+      cause: causeOf(value.cause),
+    };
+  }
   if (value instanceof Error) {
-    return { name: value.name, message: value.message, stack: value.stack };
+    return { name: value.name, message: value.message, stack: value.stack, cause: causeOf(value.cause) };
   }
   return value;
+}
+
+function causeOf(cause: unknown): string | undefined {
+  if (cause === undefined) return undefined;
+  return cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
 }
 
 export function createLogger(options: LoggerOptions = {}): Logger {

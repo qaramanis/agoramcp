@@ -100,6 +100,33 @@ export function buildBundles(
   return bundles;
 }
 
+/** Qualified tool name -> the source and tool behind it, per bundle, built on first use. */
+const BUNDLE_TOOLS = new WeakMap<Bundle, Map<string, { source: string; tool: string }>>();
+
+/**
+ * The source and bare tool behind a qualified name on a country server —
+ * `diavgeia_get_decision` is `gr/diavgeia` and `get_decision` — or nothing
+ * for a name the server does not serve. What the log line calls a request by,
+ * so a call on the country server is recorded against the registry that
+ * answered it rather than against the country.
+ */
+export function resolveBundleTool(
+  bundle: Bundle,
+  name: string,
+): { source: string; tool: string } | undefined {
+  let index = BUNDLE_TOOLS.get(bundle);
+  if (!index) {
+    index = new Map();
+    for (const source of bundle.sources) {
+      for (const tool of source.tools) {
+        index.set(qualifiedToolName(source, tool), { source: sourceKey(source), tool: tool.name });
+      }
+    }
+    BUNDLE_TOOLS.set(bundle, index);
+  }
+  return index.get(name);
+}
+
 /**
  * The two address families, built in one place so a mount and the description
  * of that mount cannot disagree. MCP stops at the source — the tool is chosen

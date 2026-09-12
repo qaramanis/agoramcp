@@ -4,21 +4,26 @@ import { ArrowUpRight } from "lucide-react";
 import { columnGapClass, Grid, gutterClass } from "@/components/layout/grid";
 import Band from "@/components/mcp/band";
 import { Code } from "@/components/mcp/inline";
+import HistoryStrip from "@/components/status/history-strip";
 import {
+  DEGRADED_SHARE,
   formatChecked,
   HEALTH_LABELS,
+  HISTORY_DAYS,
   loadStatus,
+  OUTAGE_SHARE,
   SLOW_MS,
   summarise,
   TIMEOUT_MS,
   type Health,
+  type SourceHistory,
   type SourceStatus,
 } from "@/data/status";
 
 export const metadata: Metadata = {
   title: "Status — agoramcp",
   description:
-    "A live check per registry: one real call through the public API, and how long it took to come back.",
+    "A live check per registry through the public API, and the last 90 days of every call that went through agoramcp, counted by the day.",
 };
 
 /**
@@ -29,7 +34,7 @@ export const metadata: Metadata = {
 export const revalidate = 0;
 
 export default async function StatusPage() {
-  const { sources, checkedAt, unavailable } = await loadStatus();
+  const { sources, checkedAt, unavailable, history, historyUnavailable } = await loadStatus();
 
   return (
     <main className={`min-h-screen pt-28 pb-20 ${gutterClass}`}>
@@ -42,14 +47,17 @@ export default async function StatusPage() {
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               Opening this page calls one tool on every registry agoramcp
               mounts, through the same public API anyone else uses, and reports
-              what came back. Nothing is remembered between visits: what you are
-              reading happened while the page was being built for you.
+              what came back. That verdict happened while the page was being
+              built for you. The bars under each registry are the last{" "}
+              {HISTORY_DAYS} days: every call that went through the server
+              &mdash; yours, the console&apos;s, the monitor&apos;s &mdash;
+              counted by the day.
             </p>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               A registry that is not answering is almost always the
-              registry&apos;s own outage rather than ours — but either way it is
-              a question you cannot get an answer to right now, which is what
-              this page is for.
+              registry&apos;s own outage rather than ours &mdash; but either way
+              it is a question you cannot get an answer to right now, which is
+              what this page is for.
             </p>
           </div>
 
@@ -64,13 +72,20 @@ export default async function StatusPage() {
       </header>
 
       {sources.length > 0 && (
-        <Band ariaLabel="Registries" title="Every registry, just now.">
+        <Band ariaLabel="Registries" title={`Every registry, now and over ${HISTORY_DAYS} days.`}>
           <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
             The tool each check called is named beside the source, so you can
             run the same call yourself and compare. Times are the whole round
-            trip from this server — our own hop included, not just the
-            registry&apos;s.
+            trip from this server &mdash; our own hop included, not just the
+            registry&apos;s. Each bar is one day; hover it for how many calls
+            the registry was asked and how many it did not answer.
           </p>
+
+          {historyUnavailable && (
+            <p className="col-span-8 col-start-1 mt-3 text-[12px] leading-relaxed text-warn md:col-span-6">
+              {historyUnavailable} The checks above still stand.
+            </p>
+          )}
 
           <ul className="col-span-8 col-start-1 mt-8 flex flex-col">
             {sources.map((source) => (
@@ -78,7 +93,7 @@ export default async function StatusPage() {
                 key={`${source.country}/${source.id}`}
                 className="border-t border-panel-border/50 py-5 first:border-t-0 first:pt-0"
               >
-                <Row source={source} />
+                <Row source={source} history={history[`${source.country}/${source.id}`]} />
               </li>
             ))}
           </ul>
@@ -118,8 +133,17 @@ function Verdict({
   );
 }
 
-/** One registry: what was asked, what came back, and how long it took. */
-function Row({ source }: { source: SourceStatus }) {
+/**
+ * One registry: what was asked, what came back, how long it took — and, under
+ * that, the strip of its last ninety days.
+ */
+function Row({
+  source,
+  history,
+}: {
+  source: SourceStatus;
+  history: SourceHistory | undefined;
+}) {
   return (
     <div className={`grid grid-cols-8 gap-y-3 ${columnGapClass}`}>
       <div className="col-span-8 col-start-1 md:col-span-3">
@@ -152,6 +176,12 @@ function Row({ source }: { source: SourceStatus }) {
       <p className="col-span-8 col-start-1 text-[12px] text-muted tabular-nums md:col-span-2 md:col-start-7 md:text-right">
         {source.ms} ms
       </p>
+
+      {history && (
+        <div className="col-span-8 col-start-1 mt-2">
+          <HistoryStrip history={history} />
+        </div>
+      )}
     </div>
   );
 }
@@ -174,6 +204,9 @@ function Dot({ health }: { health: Health }) {
 }
 
 function Method() {
+  const degradedPast = Math.round(1 / DEGRADED_SHARE);
+  const outagePast = Math.round(1 / OUTAGE_SHARE);
+
   return (
     <Band ariaLabel="Method" title="What this check actually does.">
       <ul className="col-span-8 col-start-1 mt-8 flex flex-col gap-6 md:col-span-6">
@@ -185,9 +218,9 @@ function Method() {
             Each check is a plain HTTP request to{" "}
             <Code>/{"{country}"}/api/{"{source}"}/{"{tool}"}</Code>, with the
             arguments that tool already ships as its example. It measures the
-            whole path a caller uses — this server, the source&apos;s adapter,
-            the registry behind it — rather than pinging a registry directly and
-            reporting on something nobody calls.
+            whole path a caller uses &mdash; this server, the source&apos;s
+            adapter, the registry behind it &mdash; rather than pinging a
+            registry directly and reporting on something nobody calls.
           </p>
         </li>
         <li>
@@ -197,10 +230,10 @@ function Method() {
           <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
             Where a source has a search, that is what the check calls. A search
             exercises the registry&apos;s own index, and it is where each source
-            sets its shortest cache lifetime — so a green light is about the
-            last few minutes rather than about whenever some record was first
-            fetched. A source with nothing to search gets its cheapest list
-            instead, never a lookup: a check should not be sending someone
+            sets its shortest cache lifetime &mdash; so a green light is about
+            the last few minutes rather than about whenever some record was
+            first fetched. A source with nothing to search gets its cheapest
+            list instead, never a lookup: a check should not be sending someone
             else&apos;s identifier upstream on every page view.
           </p>
         </li>
@@ -222,7 +255,7 @@ function Method() {
             Over {SLOW_MS / 1_000} seconds is reported as answering slowly;
             after {TIMEOUT_MS / 1_000} the check is abandoned and reported as no
             answer. A failure that comes back as an error is quoted in the
-            API&apos;s own words —{" "}
+            API&apos;s own words &mdash;{" "}
             <Link
               href="/api"
               className="text-foreground transition-colors duration-300 hover:text-accent"
@@ -232,11 +265,28 @@ function Method() {
             is listed with what it means.
           </p>
         </li>
+        <li>
+          <p className="text-[13px] text-foreground">Every call counts</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            Each call that goes through the server &mdash; from an MCP client,
+            from the API, or from the monitor &mdash; leaves one row: which
+            registry, which tool, whether it answered, the error&apos;s code
+            when it did not, and how long it took. Never the arguments, and
+            never who asked. A day is marked as degraded once more than one
+            call in {degradedPast} went unanswered, as an outage past one in{" "}
+            {outagePast}, and left blank when nothing was asked. A{" "}
+            <Code>not_found</Code> or <Code>invalid_input</Code> is the
+            caller&apos;s own, and counts as answered. Rows are kept for{" "}
+            {HISTORY_DAYS} days.
+          </p>
+        </li>
       </ul>
 
       <p className="col-span-8 col-start-1 mt-8 text-[12px] leading-relaxed text-muted-foreground md:col-span-6">
-        One call each is a sample, not a monitor. To see for yourself, put the
-        same question to a tool in the{" "}
+        The verdict at the top is one call each &mdash; a sample. The bars are
+        the monitor: the same check runs every ten minutes, and every real call
+        is counted beside it, so a bar is never one unlucky moment. To see for
+        yourself, put the same question to a tool in the{" "}
         <Link
           href="/live"
           className="text-foreground transition-colors duration-300 hover:text-accent"
@@ -262,7 +312,7 @@ function Unreachable({ message }: { message: string }) {
       </div>
       <p className="mt-2 text-[12px] leading-relaxed text-warn">
         {message} Until it does, nothing can be said about the registries behind
-        it — they may well be fine.
+        it &mdash; they may well be fine.
       </p>
     </div>
   );

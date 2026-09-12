@@ -1,16 +1,50 @@
 import type { Logger } from "@agoramcp/core";
 import type { MiddlewareHandler } from "hono";
+import { clientAddress } from "./client.ts";
+
+/**
+ * What the JSON-RPC body of an MCP request said, for the request line. Every
+ * request to a mount is a POST to the same path; this is what tells one from
+ * the next.
+ */
+export interface RpcSummary {
+  /** The method, or the distinct methods of a batch joined with commas. */
+  method: string;
+  id?: string | number;
+  /** Who connected, on `initialize`. */
+  client?: { name: string; version: string };
+  protocolVersion?: string;
+  /** How many messages, when the body was a batch. */
+  batch?: number;
+}
+
+/** The source and tool a request resolved to, whichever transport carried it. */
+export interface CallSummary {
+  source: string;
+  tool: string;
+}
 
 declare module "hono" {
   interface ContextVariableMap {
     requestId: string;
     logger: Logger;
+    rpc?: RpcSummary;
+    call?: CallSummary;
   }
 }
 
 /**
+ * Sent by the status page's probe. A probe is logged like any call and marked
+ * as one, so it can be told apart from a person — and it is not recorded,
+ * because the probe writes its own row.
+ */
+export const PROBE_HEADER = "x-agoramcp-probe";
+
+/**
  * One structured line per request, plus an `x-request-id` the caller can quote
- * when reporting a problem.
+ * when reporting a problem. The line is written after the route has run, so
+ * it carries what the route found out: the JSON-RPC method behind a POST to
+ * a mount, and the source and tool behind a call.
  */
 export function requestLogger(logger: Logger): MiddlewareHandler {
   return async (c, next) => {
@@ -24,12 +58,25 @@ export function requestLogger(logger: Logger): MiddlewareHandler {
     try {
       await next();
     } finally {
+      const rpc = c.get("rpc");
+      const call = c.get("call");
+      // Undefined fields fall out of the JSON, so the optional ones cost nothing when absent.
       logger.info("request", {
         requestId,
         method: c.req.method,
         path: c.req.path,
         status: c.res.status,
         durationMs: Date.now() - startedAt,
+        ip: clientAddress(c),
+        userAgent: c.req.header("user-agent"),
+        probe: c.req.header(PROBE_HEADER) === undefined ? undefined : true,
+        rpcMethod: rpc?.method,
+        rpcId: rpc?.id,
+        batch: rpc?.batch,
+        client: rpc?.client,
+        protocolVersion: rpc?.protocolVersion,
+        source: call?.source,
+        tool: call?.tool,
       });
     }
   };

@@ -1,6 +1,6 @@
-import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Context, MiddlewareHandler } from "hono";
 import { rateLimiter } from "hono-rate-limiter";
+import { clientAddress } from "./client.ts";
 
 export interface RateLimitOptions {
   /**
@@ -43,15 +43,4 @@ export function createRateLimiter(
     keyGenerator: (c) => `${clientAddress(c)}:${scope(c)}`,
     message: options.message ?? JSON_RPC_MESSAGE,
   });
-}
-
-/**
- * Behind Caddy the socket address is the proxy, so prefer the forwarded chain's
- * first entry. Only safe because nothing but our own proxy is upstream.
- */
-function clientAddress(c: Context): string {
-  const forwarded = c.req.header("x-forwarded-for");
-  const first = forwarded?.split(",")[0]?.trim();
-  if (first) return first;
-  return getConnInfo(c).remote.address ?? "unknown";
 }

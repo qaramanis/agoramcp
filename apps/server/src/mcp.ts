@@ -13,17 +13,27 @@ import { callTool, type ToolDeps } from "./call.ts";
 export const SERVER_VERSION = "0.1.0";
 
 /**
+ * How many times one request reached a handler. The SDK validates a
+ * `tools/call` before calling us and answers a bad one itself — an unknown
+ * name, arguments that do not fit the schema — as an ordinary result, so the
+ * only way to know it did is that the count stayed at zero.
+ */
+export interface CallTrace {
+  toolCalls: number;
+}
+
+/**
  * Wraps one `Source` in an MCP server. Called per request: the transport is
  * stateless, so a fresh instance keeps concurrent callers isolated.
  */
-export function createSourceServer(source: Source, deps: ToolDeps): McpServer {
+export function createSourceServer(source: Source, deps: ToolDeps, trace: CallTrace): McpServer {
   const server = new McpServer(
     { name: `agoramcp-${source.country}-${source.id}`, title: source.meta.name, version: SERVER_VERSION },
     { capabilities: { tools: {} }, instructions: sourceInstructions(source) },
   );
 
   for (const tool of source.tools) {
-    register(server, source, tool, tool.name, deps);
+    register(server, source, tool, tool.name, deps, trace);
   }
 
   return server;
@@ -35,7 +45,7 @@ export function createSourceServer(source: Source, deps: ToolDeps): McpServer {
  * are registered under `{source}_{tool}`, because tool names are unique only
  * within a source and a bundle puts several side by side.
  */
-export function createBundleServer(bundle: Bundle, deps: ToolDeps): McpServer {
+export function createBundleServer(bundle: Bundle, deps: ToolDeps, trace: CallTrace): McpServer {
   const server = new McpServer(
     { name: `agoramcp-${bundle.country}`, title: bundle.meta.name, version: SERVER_VERSION },
     { capabilities: { tools: {} }, instructions: bundleInstructions(bundle) },
@@ -43,7 +53,7 @@ export function createBundleServer(bundle: Bundle, deps: ToolDeps): McpServer {
 
   for (const source of bundle.sources) {
     for (const tool of source.tools) {
-      register(server, source, tool, qualifiedToolName(source, tool), deps);
+      register(server, source, tool, qualifiedToolName(source, tool), deps, trace);
     }
   }
 
@@ -62,6 +72,7 @@ function register(
   tool: AnySourceTool,
   name: string,
   deps: ToolDeps,
+  trace: CallTrace,
 ): void {
   server.registerTool(
     name,
@@ -72,6 +83,7 @@ function register(
       ...(tool.annotations ? { annotations: { title: tool.title, ...tool.annotations } } : {}),
     },
     async (input: Record<string, unknown>, extra: { signal: AbortSignal }): Promise<CallToolResult> => {
+      trace.toolCalls += 1;
       try {
         const data = await callTool(source, tool, input, deps, extra.signal);
         return { content: [{ type: "text", text: render(data) }] };

@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.20",
+    title: "Log every tool call in full and give the status page its last 90 days",
+    body: [
+      "The server's `request` line now says what a POST to a mount was: the JSON-RPC method, the client's name and version on `initialize`, and for a `tools/call` the registry and tool behind it — a qualified name on the country server is resolved to the source that answers. `callTool` writes one `tool.ok` or `tool.failed` line per call carrying the same `requestId`, with transport, mount, arguments, duration, result size and cache hits; a failure carries the `AgoraError`'s code, status, details and cause, at a level that says whose fault it was. Calls the SDK refuses before any handler runs — an unknown tool, arguments the schema will not take — and the transport's own 406/415/bad-JSON refusals, which used to become 500s, each get a line of their own. `LOG_SLOW_TOOL_MS` and `LOG_TOOL_ARGS` are new, both documented in the README.",
+      "With `DATABASE_URL` set, the server also records each finished call as a row in `tool_calls` (`apps/server/src/record.ts`, a migration in `apps/web/db/migrations`): source, tool, transport, outcome, code and duration, never the arguments or an address. `apps/web/vercel.json` schedules `/api/cron/status` every ten minutes, which makes the page's own check per registry and writes it as a `probe` row, so a quiet day is not a blank one and a stretch when the server itself was down is recorded as one; the same run drops rows older than 90 days. `CRON_SECRET` lets it in.",
+      "`/status` keeps its live verdict and adds, under each registry, `components/status/history-strip.tsx`: ninety cells for ninety days, green for a day that answered, the site's one warning colour at half strength for a day that missed more than one call in a hundred and full for more than one in four, the panel border for a day nothing was asked, with the count in each cell's title and the window's share answered beneath. `data/status.ts` shapes the rows for it and sends `x-agoramcp-probe` on every check, which the server logs but does not record.",
+    ],
+    date: "2026-09-12",
+  },
+  {
     version: "v.1.1.19",
     title: "Build the footer from the nav and add the Privacy and Terms pages",
     body: [
