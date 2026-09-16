@@ -171,7 +171,7 @@ export const agents: Agent[] = [
     logo: "/logos/agents/direct.svg",
     invert: true,
     summary:
-      "The address is the whole integration. A client none of the entries above cover still takes it — paste it wherever it asks for a Streamable HTTP server, with no command to run and no key to send.",
+      "The address is the whole integration. A client none of the entries above cover still takes it: paste it wherever it asks for a Streamable HTTP server, with no command to run and no key to send.",
     configs: [
       {
         title: "Server URL",

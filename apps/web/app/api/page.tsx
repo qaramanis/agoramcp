@@ -24,9 +24,9 @@ import {
 } from "@/data/api";
 
 export const metadata: Metadata = {
-  title: "API — agoramcp",
+  title: "API - agoramcp",
   description:
-    "Query Greek open government data over plain HTTP. The same tools the MCP servers mount, one GET each — no key, no account, attribution in every response.",
+    "Query Greek open government data over plain HTTP. The same tools the MCP servers mount, one GET each. No key, no account, attribution in every response.",
 };
 
 export default function ApiPage() {
@@ -46,7 +46,7 @@ export default function ApiPage() {
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               Every tool the MCP servers mount also answers a plain HTTP
               request, at an address you can type. For a script, a notebook, a
-              cron job or a backend — anything that needs an answer rather than
+              cron job or a backend: anything that needs an answer rather than
               a conversation. Same sources, same attribution, no key and no
               account.
             </p>
@@ -114,7 +114,7 @@ function Discover() {
         One request, <Code>/gr/api</Code>, lists every source a country mounts
         and where each of its tools answers. One level down,{" "}
         <Code>/gr/api/diavgeia</Code> adds each tool&apos;s input schema and the
-        example it ships with — enough to build a query string, or a form, for
+        example it ships with: enough to build a query string, or a form, for
         a tool nobody told you about. The live console on this site is built
         from the same description.
       </Prose>
@@ -133,7 +133,7 @@ function Call() {
       <div className="col-span-8 col-start-1 mt-8 flex flex-col gap-10">
         <Block
           title="The address"
-          note="Country, source, tool — the same three names the MCP mounts use, with the tool as the last segment because there is no session to choose it in."
+          note="Country, source, tool: the same three names the MCP mounts use, with the tool as the last segment because there is no session to choose it in."
         >
           <Code>
             <span className="text-[13px] tracking-tight">
@@ -147,12 +147,12 @@ function Call() {
           note={
             <>
               <Code>GET</Code> takes them as query parameters, coerced to what
-              the schema declares — <Code>size=5</Code> is a number, a bare{" "}
+              the schema declares: <Code>size=5</Code> is a number, a bare{" "}
               <Code>includeInactive</Code> is true. <Code>POST</Code> takes one
               JSON object instead, for a long query or when you would rather not
-              encode Greek into a URL — query values are URL-encoded, which
+              encode Greek into a URL (query values are URL-encoded, which
               every HTTP library does for you and curl does with{" "}
-              <Code>--data-urlencode</Code>. Either way, a parameter the tool
+              <Code>--data-urlencode</Code>). Either way, a parameter the tool
               does not declare is a 400, so a typo cannot silently widen a
               search.
             </>
@@ -168,7 +168,7 @@ function Call() {
           title="The response"
           note={
             <>
-              An envelope around <Code>data</Code>, the tool&apos;s own result —
+              An envelope around <Code>data</Code>, the tool&apos;s own result:
               the same object an assistant reads over MCP. The rest is
               provenance, on every response: an MCP session is told the licence
               once when it connects; a stateless request has to be told every
@@ -242,7 +242,7 @@ const LIMITS: { title: string; body: ReactNode }[] = [
     title: `${RATE_LIMIT_PER_MINUTE} requests a minute`,
     body: (
       <>
-        Per client, per source — a script hammering Διαύγεια does not spend
+        Per client, per source: a script hammering Διαύγεια does not spend
         another registry&apos;s allowance. Every response reports the budget in{" "}
         <Code>RateLimit-*</Code> headers; past it, a <Code>429</Code>.
       </>

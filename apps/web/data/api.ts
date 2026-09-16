@@ -30,7 +30,7 @@ export const FIRST_RESPONSE = `{
   "source": "diavgeia",
   "country": "gr",
   "tool": "get_decision",
-  "publisher": "Υπουργείο Ψηφιακής Διακυβέρνησης — Πρόγραμμα ΔΙΑΥΓΕΙΑ",
+  "publisher": "Υπουργείο Ψηφιακής Διακυβέρνησης - Πρόγραμμα ΔΙΑΥΓΕΙΑ",
   "license": "CC-BY-4.0",
   "attribution": "Πρόγραμμα ΔΙΑΥΓΕΙΑ (diavgeia.gov.gr)",
   "upstreamUrl": "https://diavgeia.gov.gr/opendata",
@@ -96,7 +96,7 @@ export const ENVELOPE: { key: string; meaning: string }[] = [
   { key: "license", meaning: "the registry's licence, SPDX where one exists" },
   { key: "attribution", meaning: "the line the licence asks you to show with the data" },
   { key: "upstreamUrl", meaning: "where the registry itself lives" },
-  { key: "data", meaning: "the tool's own result — what an assistant reads over MCP" },
+  { key: "data", meaning: "the tool's own result: what an assistant reads over MCP" },
 ];
 
 /** A real 400, as the server sent it for `?ada=INVALID`. */

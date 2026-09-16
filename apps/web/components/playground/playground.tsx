@@ -169,7 +169,7 @@ export default function Playground({
           licence: the MCP server sends them as the session's instructions. */}
       <p className="col-span-12 col-start-1 text-[11px] leading-relaxed text-muted">
         Calls run against the live registry, not a fixture. Responses are public data returned
-        unmodified, under whatever licence the publishing body sets — check that source&apos;s own
+        unmodified, under whatever licence the publishing body sets. Check that source&apos;s own
         terms before reusing it.
       </p>
     </Grid>

@@ -25,8 +25,8 @@ export async function generateMetadata({
 }: PageProps<"/all/[country]">): Promise<Metadata> {
   const { country: code } = await params;
   const country = findCountry(await loadDirectory(), code);
-  if (!country) return { title: "Not in the catalogue — agoramcp" };
-  return { title: `${country.name} — agoramcp`, description: country.description };
+  if (!country) return { title: "Not in the catalogue - agoramcp" };
+  return { title: `${country.name} - agoramcp`, description: country.description };
 }
 
 export default async function CountryPage({ params }: PageProps<"/all/[country]">) {
@@ -76,8 +76,8 @@ export default async function CountryPage({ params }: PageProps<"/all/[country]"
                 the source that answers it
                 {qualified && (
                   <>
-                    {" "}
-                    — <Code>{qualified}</Code>
+                    {", as in "}
+                    <Code>{qualified}</Code>
                   </>
                 )}
                 .{" "}

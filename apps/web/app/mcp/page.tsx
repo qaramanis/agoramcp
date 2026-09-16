@@ -7,7 +7,7 @@ import { Code, Shape } from "@/components/mcp/inline";
 import { mounts } from "@/data/mcp";
 
 export const metadata: Metadata = {
-  title: "MCP — agoramcp",
+  title: "MCP - agoramcp",
   description:
     "Connect Claude, Cursor or any MCP client to Greek open government data. A whole country at one address, or a single registry at its own.",
 };
@@ -67,7 +67,7 @@ export default function McpPage() {
 const MOUNT_NOTES: Record<string, ReactNode> = {
   "/gr/mcp": (
     <>
-      Every registry agoramcp mounts for that country, behind one connection —
+      Every registry agoramcp mounts for that country, behind one connection:
       Greece answers at <Code>/gr/mcp</Code>. Tool names carry the registry that
       answers them, so <Code>diavgeia_get_decision</Code> is unambiguous the
       moment a second source lands beside it.
@@ -77,7 +77,7 @@ const MOUNT_NOTES: Record<string, ReactNode> = {
     <>
       A single registry on its own. For example <Code>/gr/mcp/diavgeia</Code> is
       the register every Greek public body publishes its decisions in, and its
-      tools keep their plain names — <Code>get_decision</Code>. A narrower
+      tools keep their plain names: <Code>get_decision</Code>. A narrower
       surface is one a model chooses better within.
     </>
   ),
@@ -136,8 +136,8 @@ const STEPS: { title: string; body: ReactNode }[] = [
       <>
         On connecting, the model is told what it has reached: the registry, who
         publishes it, its licence and how to attribute it. The country server
-        adds a map of tool prefixes to registries — <Code>diavgeia_*</Code> is
-        Diavgeia — so a question is routed without a call spent finding out.
+        adds a map of tool prefixes to registries (<Code>diavgeia_*</Code> is
+        Diavgeia), so a question is routed without a call spent finding out.
       </>
     ),
   },
@@ -193,7 +193,7 @@ function HowItWorks() {
         </h2>
         <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
           What happens between a client opening the address and an answer
-          landing in the model&apos;s context — the same steps on a country
+          landing in the model&apos;s context: the same steps on a country
           server and on a single source.
         </p>
 
@@ -215,7 +215,7 @@ function HowItWorks() {
 
         <p className="col-span-8 col-start-1 mt-8 text-[12px] leading-relaxed text-muted-foreground md:col-span-6">
           The server is a read-only proxy. It cannot write to a registry, and it
-          returns only what the registry publishes — where a question falls
+          returns only what the registry publishes. Where a question falls
           outside the tools, the model is told to say so rather than guess.
         </p>
       </section>

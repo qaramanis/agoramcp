@@ -4,7 +4,7 @@ import Playground from "@/components/playground/playground";
 import { loadCatalogue } from "@/data/catalogue";
 
 export const metadata: Metadata = {
-  title: "View live — agoramcp",
+  title: "View live - agoramcp",
   description: "Call the mounted MCP tools from the browser and read the real response.",
 };
 

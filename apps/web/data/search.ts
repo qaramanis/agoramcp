@@ -121,7 +121,7 @@ function fromApi(): SearchResult[] {
   return [
     ...ERROR_CODES.map((error) => ({
       title: error.code,
-      description: `${error.status} — ${error.meaning}`,
+      description: `${error.status}: ${error.meaning}`,
       url: "/api",
       group: "API errors",
       keywords: [error.code.replace(/_/g, " ")],

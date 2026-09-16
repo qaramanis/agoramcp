@@ -192,7 +192,7 @@ function NothingFound({ query }: { query: string }) {
     <Band ariaLabel="Nothing found" title={`Nothing matches “${query}”.`}>
       <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
         No country or source by that name is mounted yet. If it is a country,
-        ask for it — the most asked-for ones get built first.
+        ask for it: the most asked-for ones get built first.
       </p>
       <Link
         href="/country"

@@ -385,7 +385,7 @@ function ChoiceToken({
                   choice.value === value ? "bg-background" : ""
                 }`}
               >
-                <span className="w-[6ch] shrink-0 text-code-string">{choice.value || "—"}</span>
+                <span className="w-[6ch] shrink-0 text-code-string">{choice.value || "-"}</span>
                 <span className="text-[11px] whitespace-nowrap text-muted-foreground">
                   {choice.label}
                 </span>

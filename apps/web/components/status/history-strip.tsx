@@ -42,13 +42,13 @@ const CELL: Record<DayState, string> = {
   none: "bg-panel-border",
 };
 
-/** "7 September 2026 — 1,203 calls, 3 not answered" */
+/** "7 September 2026: 1,203 calls, 3 not answered" */
 function describe(day: DayHealth): string {
   const when = formatDay(day.date);
-  if (day.total === 0) return `${when} — no calls`;
+  if (day.total === 0) return `${when}: no calls`;
   const calls = `${day.total.toLocaleString("en-GB")} ${day.total === 1 ? "call" : "calls"}`;
   const missed = day.failed === 0 ? "all answered" : `${day.failed.toLocaleString("en-GB")} not answered`;
-  return `${when} — ${calls}, ${missed}`;
+  return `${when}: ${calls}, ${missed}`;
 }
 
 /** "99.4% answered" — two decimals at most, none when they are zeros. */

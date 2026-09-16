@@ -5,7 +5,7 @@ import { gutterClass } from "@/components/layout/grid";
 import { loadDirectory, toCatalogue } from "@/data/directory";
 
 export const metadata: Metadata = {
-  title: "All sources — agoramcp",
+  title: "All sources - agoramcp",
   description:
     "Every country agoramcp serves and every official registry it mounts, with the tools each one answers.",
 };

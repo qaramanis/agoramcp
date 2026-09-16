@@ -40,12 +40,12 @@ export type LegalDocument = {
 export const privacy: LegalDocument = {
   heading: "What we know about you, which is almost nothing.",
   lead: [
-    "agoramcp has no accounts, sets no cookies and runs no analytics. What follows is the whole list of what the site and the servers see when you use them, and what is kept — written from the code, not from a template.",
+    "agoramcp has no accounts, sets no cookies and runs no analytics. What follows is the whole list of what the site and the servers see when you use them, and what is kept, written from the code, not from a template.",
     "It is short because there is little to say. When the code changes in a way this page describes, the page changes with it and the date below moves.",
   ],
   inShort: [
     "No accounts, no cookies, no analytics, nothing loaded from anyone else.",
-    "Requesting a country stores the country and a salted hash of your address and browser — never the address itself.",
+    "Requesting a country stores the country and a salted hash of your address and browser, never the address itself.",
     "The servers log one line per request: what was asked, how long it took, and a request id. Not who asked.",
     "The registries see our server, not you.",
   ],
@@ -74,7 +74,7 @@ export const privacy: LegalDocument = {
     {
       title: "Using the tools",
       body: [
-        "Whatever you send to a tool — through an MCP client, the HTTP API or the live playground — goes to our server and on to the registry that holds the answer. The server keeps one structured log line per request: the method and path, the status, how long it took, and the `x-request-id` it also returns to you. It does not log your address, your arguments or what came back.",
+        "Whatever you send to a tool, through an MCP client, the HTTP API or the live playground, goes to our server and on to the registry that holds the answer. The server keeps one structured log line per request: the method and path, the status, how long it took, and the `x-request-id` it also returns to you. It does not log your address, your arguments or what came back.",
         "Your address is held in memory for one minute to enforce the per-source rate limit, and is gone with the minute.",
       ],
       link: { label: "The API and its limits", href: "/api" },
@@ -95,7 +95,7 @@ export const privacy: LegalDocument = {
     {
       title: "Your rights",
       body: [
-        "Under the GDPR you can ask what is held about you, have it corrected or erased, object to its being kept, or take a copy — and complain to your supervisory authority if the answer does not satisfy. Write to hello@agoramcp.eu.",
+        "Under the GDPR you can ask what is held about you, have it corrected or erased, object to its being kept, or take a copy, and complain to your supervisory authority if the answer does not satisfy. Write to hello@agoramcp.eu.",
         "The one thing kept, the hash, is built so that we cannot tell which row is yours. To erase it we would recompute it from the address and browser you used, with your help.",
       ],
     },
@@ -112,7 +112,7 @@ export const privacy: LegalDocument = {
 export const terms: LegalDocument = {
   heading: "Plain terms for a plain service.",
   lead: [
-    "agoramcp puts official public registries behind MCP servers and an HTTP API, and this site describes them. Using any of the three means agreeing to what follows — which is mostly a statement of where the data comes from and how much of it is ours, which is none.",
+    "agoramcp puts official public registries behind MCP servers and an HTTP API, and this site describes them. Using any of the three means agreeing to what follows, which is mostly a statement of where the data comes from and how much of it is ours, which is none.",
     "They are short for the same reason the privacy page is: there is not much to govern.",
   ],
   inShort: [
@@ -126,34 +126,34 @@ export const terms: LegalDocument = {
     {
       title: "What the service is",
       body: [
-        "MCP servers and an HTTP API that adapt public registries — Diavgeia, data.gov.gr and the rest of the catalogue — so that a model or a script can query them. Nothing is stored or curated: every answer is fetched from the registry when asked for, and returned as published.",
+        "MCP servers and an HTTP API that adapt public registries (Diavgeia, data.gov.gr and the rest of the catalogue) so that a model or a script can query them. Nothing is stored or curated: every answer is fetched from the registry when asked for, and returned as published.",
       ],
       link: { label: "The catalogue", href: "/all" },
     },
     {
       title: "Whose data it is",
       body: [
-        "Every record belongs to the body that publishes it and comes under that body's licence. agoramcp adds no condition on top and claims nothing over the data. The licence and the attribution line arrive with every answer, and meeting them — showing the line, keeping to what the licence permits — is your responsibility, not ours. Some registries record no licence at all; what that means for reuse is on the licences page.",
+        "Every record belongs to the body that publishes it and comes under that body's licence. agoramcp adds no condition on top and claims nothing over the data. The licence and the attribution line arrive with every answer, and meeting them (showing the line, keeping to what the licence permits) is your responsibility, not ours. Some registries record no licence at all; what that means for reuse is on the licences page.",
       ],
       link: { label: "Licences", href: "/licenses" },
     },
     {
       title: "No warranty",
       body: [
-        "The service is provided as it is and as available. A registry can be down, slow or wrong, and its records come back exactly as it published them, unverified. Nothing here is legal, financial or professional advice, and a record found through agoramcp is not an official copy of it — for that, go to the registry.",
+        "The service is provided as it is and as available. A registry can be down, slow or wrong, and its records come back exactly as it published them, unverified. Nothing here is legal, financial or professional advice, and a record found through agoramcp is not an official copy of it. For that, go to the registry.",
       ],
     },
     {
       title: "Availability and limits",
       body: [
-        "There is no service level. Each source has a per-minute budget per caller; a request over it is refused with a `429` and told when to try again, and the numbers are on the API page. The status page says what is answering now. The service may change or stop, in whole or in part, without notice — the changelog is where changes are written down.",
+        "There is no service level. Each source has a per-minute budget per caller; a request over it is refused with a `429` and told when to try again, and the numbers are on the API page. The status page says what is answering now. The service may change or stop, in whole or in part, without notice; the changelog is where changes are written down.",
       ],
       link: { label: "The API and its limits", href: "/api" },
     },
     {
       title: "What not to do",
       body: [
-        "Do not work around the rate limit, or route traffic so that one caller looks like many. Do not use the service to attack, scrape or overload a registry — they are public bodies' servers, and agoramcp exists to be a considerate caller of them. Do not present what comes back as agoramcp's own, or as an official document. And keep to the registry's own terms, which the service cannot enforce for you.",
+        "Do not work around the rate limit, or route traffic so that one caller looks like many. Do not use the service to attack, scrape or overload a registry; they are public bodies' servers, and agoramcp exists to be a considerate caller of them. Do not present what comes back as agoramcp's own, or as an official document. And keep to the registry's own terms, which the service cannot enforce for you.",
       ],
     },
     {

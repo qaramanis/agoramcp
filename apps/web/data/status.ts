@@ -224,7 +224,7 @@ async function reason(response: Response): Promise<{ code: string; detail: strin
     const body = (await response.json()) as { error?: { code?: string; message?: string } };
     const code = body.error?.code;
     const message = body.error?.message?.split("\n")[0]?.trim();
-    if (code && message) return { code, detail: `${code} — ${message}` };
+    if (code && message) return { code, detail: `${code}: ${message}` };
     if (code) return { code, detail: code };
   } catch {
     // Not JSON, or nothing at all. The status is still worth reporting.

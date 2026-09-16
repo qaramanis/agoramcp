@@ -7,7 +7,7 @@ import { formatDay } from "@/data/format";
 import { currentRelease } from "@/data/version";
 
 export const metadata: Metadata = {
-  title: "Changelog — agoramcp",
+  title: "Changelog - agoramcp",
   description:
     "What changed in agoramcp, newest first, each entry with the version the project was at when it landed.",
 };
@@ -32,7 +32,7 @@ export default function ChangelogPage() {
             </p>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               The version in front of each one is the version the project stood
-              at when that commit landed — the same counter the footer carries,
+              at when that commit landed: the same counter the footer carries,
               whose last part is the number of commits behind it.
             </p>
           </div>

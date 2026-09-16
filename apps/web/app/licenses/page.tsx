@@ -14,7 +14,7 @@ import {
 } from "@/data/licenses";
 
 export const metadata: Metadata = {
-  title: "Licences — agoramcp",
+  title: "Licences - agoramcp",
   description:
     "What each source's licence permits, what it asks of you in return, and the exact line to credit every publisher with.",
 };
@@ -41,7 +41,7 @@ export default async function LicensesPage() {
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               agoramcp publishes nothing of its own. Every record comes from an
               official registry under that registry&apos;s licence, and the
-              licence travels with it — into the briefing an assistant is given
+              licence travels with it: into the briefing an assistant is given
               on connecting, and into the envelope of every HTTP response.
             </p>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
@@ -84,7 +84,7 @@ export default async function LicensesPage() {
             title="The line to credit them with."
           >
             <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
-              Each publisher&apos;s own wording, untransliterated — a licence
+              Each publisher&apos;s own wording, untransliterated. A licence
               asks for the line it wrote, not for our reading of it. The same
               string arrives as <Code>attribution</Code> on every{" "}
               <Link
@@ -263,8 +263,8 @@ function Ours() {
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
             Greek names are written in Latin script on this site so a reader
-            without Greek can say them. Nothing in a response is transliterated
-            — subjects, bodies and attribution lines all come back in the script
+            without Greek can say them. Nothing in a response is transliterated:
+            subjects, bodies and attribution lines all come back in the script
             the registry keeps them in.
           </p>
         </li>
@@ -291,7 +291,7 @@ function Unreachable({ message }: { message: string }) {
       </p>
       <p className="mt-3 border-t border-panel-border/70 pt-3 text-[12px] leading-relaxed text-warn">
         {message} The licences are read off the running server, so this list
-        cannot be shown right now — the terms have not changed, only our ability
+        cannot be shown right now. The terms have not changed, only our ability
         to list them.
       </p>
     </div>

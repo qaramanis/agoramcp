@@ -86,7 +86,7 @@ const SPDX: Record<string, Description> = {
   "CC-BY-SA-4.0": {
     title: "Creative Commons Attribution-ShareAlike 4.0",
     terms:
-      "Everything CC BY allows, with one more condition: a work you build on this and then distribute carries the same licence. Asking a question and quoting the answer does not trigger that — republishing a dataset derived from it does.",
+      "Everything CC BY allows, with one more condition: a work you build on this and then distribute carries the same licence. Asking a question and quoting the answer does not trigger that; republishing a dataset derived from it does.",
     url: "https://creativecommons.org/licenses/by-sa/4.0/",
     rank: 0,
   },
@@ -103,14 +103,14 @@ const SPDX: Record<string, Description> = {
 const PER_DATASET: Description = {
   title: "One licence per dataset",
   terms:
-    "A catalogue does not licence what it lists. Each dataset carries its own — CC BY, ODbL, CC BY-SA, something local, or nothing at all — and every result names it in a licence field. Read that field before you reuse the file behind it.",
+    "A catalogue does not licence what it lists. Each dataset carries its own (CC BY, ODbL, CC BY-SA, something local, or nothing at all), and every result names it in a licence field. Read that field before you reuse the file behind it.",
   rank: 1,
 };
 
 const UNSTATED: Description = {
   title: "No licence recorded",
   terms:
-    "No terms are recorded anywhere the source publishes — which is a fact about the source, not a grant. The line it declares says why in its own words, and each of these has a different reason. Reading a record is not redistributing it: before you republish anything from here, go to the body that publishes it.",
+    "No terms are recorded anywhere the source publishes, which is a fact about the source, not a grant. The line it declares says why in its own words, and each of these has a different reason. Reading a record is not redistributing it: before you republish anything from here, go to the body that publishes it.",
   rank: 2,
 };
 
@@ -122,7 +122,7 @@ function describe(license: string): Description {
   return {
     title: license,
     terms:
-      "As the source declares it. Read the licence itself before you reuse the data — this page will not paraphrase terms it does not know.",
+      "As the source declares it. Read the licence itself before you reuse the data. This page will not paraphrase terms it does not know.",
     rank: 3,
   };
 }

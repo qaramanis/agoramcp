@@ -19,8 +19,8 @@ export async function generateMetadata({
 }: PageProps<"/use-cases/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const useCase = findUseCase(slug);
-  if (!useCase) return { title: "Not a use case — agoramcp" };
-  return { title: `${useCase.title} — agoramcp`, description: useCase.summary };
+  if (!useCase) return { title: "Not a use case - agoramcp" };
+  return { title: `${useCase.title} - agoramcp`, description: useCase.summary };
 }
 
 export default async function UseCasePage({
@@ -59,7 +59,7 @@ export default async function UseCasePage({
       <Band title="How it answers.">
         <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
           The model picks the tools and the order itself. This is the path it
-          takes, and the tools are named as they go over the wire — each one is
+          takes, and the tools are named as they go over the wire. Each one is
           in the catalogue, with its arguments and an example it ships with.
         </p>
 

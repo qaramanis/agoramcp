@@ -21,7 +21,7 @@ import {
 } from "@/data/status";
 
 export const metadata: Metadata = {
-  title: "Status — agoramcp",
+  title: "Status - agoramcp",
   description:
     "A live check per registry through the public API, and the last 90 days of every call that went through agoramcp, counted by the day.",
 };

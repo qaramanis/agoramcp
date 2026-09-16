@@ -78,7 +78,7 @@ export const useCases: UseCase[] = [
       {
         tool: "diavgeia_get_decision",
         title: "Read the amounts",
-        body: "Each result carries its ADA, the signer, the thematic category and the sums the act commits — enough to add up, group by supplier, or spot the outlier worth opening.",
+        body: "Each result carries its ADA, the signer, the thematic category and the sums the act commits: enough to add up, group by supplier, or spot the outlier worth opening.",
       },
       {
         tool: "diavgeia_get_decision_text",
@@ -105,7 +105,7 @@ export const useCases: UseCase[] = [
       {
         tool: "kimdis_search_notices",
         title: "Start at the tender",
-        body: "The notice says what was asked for, under which procedure and for how much — the estimate an award is later measured against.",
+        body: "The notice says what was asked for, under which procedure and for how much: the estimate an award is later measured against.",
       },
       {
         tool: "kimdis_search_contracts",
@@ -138,7 +138,7 @@ export const useCases: UseCase[] = [
       {
         tool: "datagov_get_dataset",
         title: "Read what a dataset holds",
-        body: "Its resources, their formats, and the licence it is published under — which decides whether the answer can be republished as well as read.",
+        body: "Its resources, their formats, and the licence it is published under, which decides whether the answer can be republished as well as read.",
       },
       {
         tool: "datagov_query_resource",
@@ -161,7 +161,7 @@ export const useCases: UseCase[] = [
       {
         tool: "mitos_search_procedures",
         title: "Find the procedure",
-        body: "Search by name, or start from a life event — birth, marriage, moving house — where the question is about a moment rather than a form.",
+        body: "Search by name, or start from a life event (birth, marriage, moving house) where the question is about a moment rather than a form.",
       },
       {
         tool: "mitos_get_procedure",

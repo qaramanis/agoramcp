@@ -42,7 +42,7 @@ export const glossary: Term[] = [
   {
     term: "Prefix",
     definition:
-      "What a country server puts in front of a tool name so two registries can both have a `search_organizations` — `diavgeia_search_organizations`. On a source's own server the tools keep their plain names.",
+      "What a country server puts in front of a tool name so two registries can both have a `search_organizations`, as in `diavgeia_search_organizations`. On a source's own server the tools keep their plain names.",
     where: { label: "MCP", href: "/mcp" },
   },
   {
@@ -66,7 +66,7 @@ export const glossary: Term[] = [
   {
     term: "ADAM",
     definition:
-      "The procurement equivalent: the code that identifies one document in the public contracts registry — a request, a notice, a contract or a payment order.",
+      "The procurement equivalent: the code that identifies one document in the public contracts registry (a request, a notice, a contract or a payment order).",
     where: { label: "KIMDIS", href: "/all/gr/kimdis" },
   },
 ];
@@ -121,7 +121,7 @@ export const routes: Route[] = [
     title: "MCP",
     href: "/mcp",
     answers: "What are these servers, and what happens on a call?",
-    boundary: "The addresses and the request lifecycle — not the snippets, which are the quickstart's.",
+    boundary: "The addresses and the request lifecycle, not the snippets, which are the quickstart's.",
   },
   {
     title: "API",
@@ -133,7 +133,7 @@ export const routes: Route[] = [
     title: "Live",
     href: "/live",
     answers: "What does a real answer actually look like?",
-    boundary: "One call at a time, with arguments you edit — the response, not the contract around it.",
+    boundary: "One call at a time, with arguments you edit: the response, not the contract around it.",
   },
   {
     title: "All sources",

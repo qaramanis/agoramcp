@@ -7,7 +7,7 @@ import { Ticks } from "@/components/mcp/inline";
 import { conventions, glossary, routes } from "@/data/documentation";
 
 export const metadata: Metadata = {
-  title: "Documentation — agoramcp",
+  title: "Documentation - agoramcp",
   description:
     "The map and the vocabulary: what every word on this site means, the rules that hold across all of it, and which page answers which question.",
 };
@@ -24,7 +24,7 @@ export default function DocsPage() {
               Where everything is written down.
             </h1>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-              Every part of agoramcp is documented on the page that owns it —
+              Every part of agoramcp is documented on the page that owns it:
               connecting on the quickstart, the servers on the MCP page, the
               HTTP contract on the API page, the tools themselves in the
               catalogue. Nothing is explained twice.

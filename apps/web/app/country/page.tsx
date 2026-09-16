@@ -4,7 +4,7 @@ import RequestForm from "@/components/request/request-form";
 import { loadCountries } from "@/db/queries";
 
 export const metadata: Metadata = {
-  title: "Request a country — agoramcp",
+  title: "Request a country - agoramcp",
   description: "Tell us which country's open data should be mounted next.",
 };
 

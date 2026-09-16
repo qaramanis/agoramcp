@@ -22,8 +22,8 @@ export async function generateMetadata({
   const { country: code, source: id } = await params;
   const country = findCountry(await loadDirectory(), code);
   const source = country && findSource(country, id);
-  if (!source) return { title: "Not in the catalogue — agoramcp" };
-  return { title: `${source.name} — agoramcp`, description: source.summary };
+  if (!source) return { title: "Not in the catalogue - agoramcp" };
+  return { title: `${source.name} - agoramcp`, description: source.summary };
 }
 
 export default async function SourcePage({ params }: PageProps<"/all/[country]/[source]">) {

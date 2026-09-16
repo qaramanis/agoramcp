@@ -119,7 +119,12 @@ One dev dependency exists for Vercel's sake: `apps/server` lists `undici-types`
 because Vercel type-checks the entry with a resolver that does not follow
 pnpm's symlinks, so without it `@types/node` cannot reach the package that
 gives `Response` its members and the build fails on `c.res.status`. The pnpm
-version needs nothing extra — Vercel reads the root `packageManager` pin.
+version is not read from the root `packageManager` pin: Vercel supports pnpm
+6–10 and picks 10 from the lockfile's `lockfileVersion: 9.0`, so the pin is
+ignored unless `ENABLE_EXPERIMENTAL_COREPACK=1` is set on the project. Keep
+`pnpm-lock.yaml` in a form pnpm 10 reads — the two-document lockfile pnpm 12
+writes (a leading `packageManagerDependencies` block) fails the install with
+`ERR_PNPM_BROKEN_LOCKFILE`, so install with the pinned pnpm 11.
 
 What is different on Vercel: there is no boot, so `warm` never runs. A fresh
 instance fills the Diavgeia register (~19 s, held by Diavgeia and ΚΗΜΔΗΣ

@@ -9,9 +9,9 @@ import { agents } from "@/data/agents";
 import { inspectorCommand, mounts, IS_LOCAL } from "@/data/mcp";
 
 export const metadata: Metadata = {
-  title: "Quickstart — agoramcp",
+  title: "Quickstart - agoramcp",
   description:
-    "Connect Claude, Codex, Cursor, Windsurf or VS Code to Greek open government data — one address, in about a minute.",
+    "Connect Claude, Codex, Cursor, Windsurf or VS Code to Greek open government data: one address, in about a minute.",
 };
 
 export default function QuickstartPage() {
@@ -35,14 +35,14 @@ export default function QuickstartPage() {
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               Pick the agent you already work in and paste one address into it.
               Every client takes the same server; only where you paste it
-              differs — some through their own interface, some through a file.
+              differs: some through their own interface, some through a file.
               There is no SDK, no account and nothing to install.
             </p>
             <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
               Every snippet below connects to the country server at{" "}
               <Code>{country.path}</Code>, which answers for every Greek
               registry agoramcp mounts. For a single registry, swap the address
-              for <Code>{mounts[1].path}</Code> — nothing else about the entry
+              for <Code>{mounts[1].path}</Code>. Nothing else about the entry
               changes.
             </p>
           </div>
@@ -75,8 +75,8 @@ export default function QuickstartPage() {
         {IS_LOCAL && (
           <p className="col-span-12 col-start-1 mt-3 text-[12px] leading-relaxed text-muted-foreground md:col-span-6">
             <span className="text-foreground">These addresses are local.</span>{" "}
-            The server runs on your own machine for now — <Code>pnpm dev</Code>{" "}
-            in the repository starts it on port 3000 — so a client can only
+            The server runs on your own machine for now (<Code>pnpm dev</Code>{" "}
+            in the repository starts it on port 3000), so a client can only
             reach it from there. Hosted addresses are coming, and when they land
             the only thing that changes in these snippets is the URL.
           </p>
