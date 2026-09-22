@@ -34,17 +34,19 @@ export type LegalDocument = {
 /**
  * Read from the code: `db/requester.ts` for what the request form keeps,
  * the server's logging and rate-limit middleware for what a call leaves
- * behind, `packages/core/src/http.ts` for what a registry is sent, and the
- * absence of any cookie, storage or analytics code in the site.
+ * behind, `packages/core/src/http.ts` for what a registry is sent,
+ * `app/layout.tsx` for the one script the site loads (Vercel Web Analytics;
+ * its data points are listed at vercel.com/docs/analytics/privacy-policy),
+ * and the absence of any cookie or storage code in the site.
  */
 export const privacy: LegalDocument = {
   heading: "What we know about you, which is almost nothing.",
   lead: [
-    "agoramcp has no accounts, sets no cookies and runs no analytics. What follows is the whole list of what the site and the servers see when you use them, and what is kept, written from the code, not from a template.",
+    "agoramcp has no accounts and sets no cookies. Page views are counted, by the host and without a cookie, so we know which pages are read. What follows is the whole list of what the site and the servers see when you use them, and what is kept, written from the code, not from a template.",
     "It is short because there is little to say. When the code changes in a way this page describes, the page changes with it and the date below moves.",
   ],
   inShort: [
-    "No accounts, no cookies, no analytics, nothing loaded from anyone else.",
+    "No accounts, no cookies, nothing loaded from anyone but the host. Page views are counted by Vercel without a cookie, and the hash that tells one visit from the next is kept for a day at most.",
     "Requesting a country stores the country and a salted hash of your address and browser, never the address itself.",
     "The servers log one line per request: what was asked, how long it took, and a request id. Not who asked.",
     "The registries see our server, not you.",
@@ -61,8 +63,13 @@ export const privacy: LegalDocument = {
     {
       title: "Browsing the site",
       body: [
-        "The pages are served by Vercel, which sees your address and browser the way any host does and keeps its own short-lived request logs under its own policy. The site itself sets no cookies, keeps nothing in your browser and loads nothing from anyone else: the fonts are served with the pages, the images are ours, and there is no analytics script.",
+        "The pages are served by Vercel, which sees your address and browser the way any host does and keeps its own short-lived request logs under its own policy. The site itself sets no cookies, keeps nothing in your browser and loads nothing from anyone but the host: the fonts are served with the pages, the images are ours, and the one script that is not the site's own is Vercel's, served from this address.",
+        "That script is Vercel Web Analytics, and it counts page views. For each page it records the moment, the path, the page that linked to it, and the country, region and city, browser, operating system and kind of device the request came from. The paths on this site name pages, registries and tools, never you, and the one form posts to the server and puts nothing in the address bar. Vercel tells one visit from the next with a hash it makes from the request, which it keeps for a day at most and does not tie to your address. There is no cookie, nothing kept in your browser, and nothing that follows you to another site. We see the counts, in aggregate, and nothing else.",
       ],
+      link: {
+        label: "What Vercel Web Analytics collects",
+        href: "https://vercel.com/docs/analytics/privacy-policy",
+      },
     },
     {
       title: "Requesting a country",
@@ -96,7 +103,7 @@ export const privacy: LegalDocument = {
       title: "Your rights",
       body: [
         "Under the GDPR you can ask what is held about you, have it corrected or erased, object to its being kept, or take a copy, and complain to your supervisory authority if the answer does not satisfy. Write to hello@agoramcp.eu.",
-        "The one thing kept, the hash, is built so that we cannot tell which row is yours. To erase it we would recompute it from the address and browser you used, with your help.",
+        "The one thing we keep, the hash from the country form, is built so that we cannot tell which row is yours. To erase it we would recompute it from the address and browser you used, with your help.",
       ],
     },
     {
@@ -106,7 +113,7 @@ export const privacy: LegalDocument = {
       ],
     },
   ],
-  updated: "2026-09-12",
+  updated: "2026-09-22",
 };
 
 export const terms: LegalDocument = {
