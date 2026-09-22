@@ -5,7 +5,7 @@ import { privacy } from "@/data/legal";
 export const metadata: Metadata = {
   title: "Privacy - agoramcp",
   description:
-    "What the site and the servers see when you use them, what is kept, and what is not. No accounts, no cookies, no analytics.",
+    "What the site and the servers see when you use them, what is kept, and what is not. No accounts, no cookies, and page views counted without one.",
 };
 
 export default function PrivacyPage() {

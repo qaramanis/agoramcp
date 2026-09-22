@@ -29,6 +29,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.22",
+    title: "Count page views with Vercel Web Analytics",
+    body: [
+      "`app/layout.tsx` mounts `Analytics` from `@vercel/analytics/next` at the end of the body, so every page load and client-side transition is counted once Web Analytics is enabled for the web project in the Vercel dashboard. The package was already a dependency; nothing had loaded it. The script is served from the site's own origin at `/_vercel/insights/script.js`, does nothing in development, and sets no cookie.",
+      "`/privacy` no longer says the site runs no analytics. Its lead, its summary and its Browsing section now say that page views are counted and, from Vercel's own privacy page, what a page view records: the moment, the path, the referrer, the country, region and city, browser, operating system and device type, with a request hash kept for a day at most and no cookie. `data/legal.ts` moves its date.",
+    ],
+    date: "2026-09-22",
+  },
+  {
     version: "v.1.1.20",
     title: "Log every tool call in full and give the status page its last 90 days",
     body: [
