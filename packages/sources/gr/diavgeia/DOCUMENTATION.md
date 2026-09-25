@@ -1749,7 +1749,7 @@ faults, so the model sees the message and can correct its own arguments.
 | Unknown decision type code | `not_found` | `No decision type has the code "…". Call list_decision_types for the valid codes.` |
 | Unknown dictionary | `not_found` | `No dictionary named "…". Call list_dictionaries for the valid names.` |
 | Malformed Lucene query | `invalid_input` | `Διαύγεια rejected the query: Syntax error at input position (line 1, pos N): …` — not retried |
-| PDF over 30 MB | `upstream_error` (413) | `The PDF for ΑΔΑ "…" is N MB — too large to read here. It can be downloaded from …` |
+| PDF over 30 MB, by its declared length or counted as it arrives | `upstream_error` (413) | `The PDF for ΑΔΑ "…" is N MB — too large to read here. It can be downloaded from …` (`is over 30 MB` when no length was declared) |
 | No PDF behind a known ΑΔΑ | `not_found` | `No PDF is published for ΑΔΑ "…".` |
 | `fromPage` past the last page | `invalid_input` | `fromPage (30) is past the last page: the PDF has 19.` |
 | Scanned PDF, no text layer | *(not an error)* | Empty pages and a `note` saying so |
@@ -1761,7 +1761,7 @@ faults, so the model sees the message and can correct its own arguments.
 | `issuedFrom` > `issuedTo`, `publishedFrom` > `publishedTo` | `invalid_input` | `issuedFrom (…) is after issuedTo (…).` |
 | `size` > 100 | schema | `Too big: expected number to be <=100` |
 | Upstream 5xx | `upstream_error` | Retried twice with jittered backoff first |
-| Upstream slow | `upstream_timeout` | 20 s per attempt; 60 s for the register and the dictionaries |
+| Upstream slow | `upstream_timeout` | 20 s per attempt; 60 s for the register and the dictionaries; the whole call stopped at the server's `TOOL_TIMEOUT_MS` (60 s), PDF reading included |
 
 An organization lookup that fails is **not** an error: `organization.name` comes
 back `null` and the search succeeds.

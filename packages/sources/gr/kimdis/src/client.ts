@@ -4,10 +4,12 @@ import {
   isAgoraError,
   NotFoundError,
   UpstreamError,
+  pageTexts,
+  readCapped,
   withCache,
   type Cache,
 } from "@agoramcp/core";
-import { extractText, getDocumentProxy } from "unpdf";
+import { getDocumentProxy } from "unpdf";
 
 /**
  * The open-data face of ΚΗΜΔΗΣ, run on the ΕΣΗΔΗΣ platform. Read-only and
@@ -637,24 +639,27 @@ export async function fetchAttachment(type: DocumentType, adam: string, signal: 
 
   const declared = Number(response.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_DOCUMENT_BYTES) {
-    await response.arrayBuffer().catch(() => undefined);
+    await response.body?.cancel().catch(() => undefined);
     throw tooLarge(type, adam, declared);
   }
 
   if (!(response.headers.get("content-type") ?? "").includes("application/pdf")) {
-    await response.arrayBuffer().catch(() => undefined);
+    await response.body?.cancel().catch(() => undefined);
     throw new NotFoundError(`No PDF is published for ΑΔΑΜ "${adam}".`, { details: { adam } });
   }
 
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.byteLength > MAX_DOCUMENT_BYTES) throw tooLarge(type, adam, bytes.byteLength);
+  // Counted as it arrives: a length header is a claim, and a chunked answer makes none.
+  const bytes = await readCapped(response, MAX_DOCUMENT_BYTES);
+  if (!bytes) throw tooLarge(type, adam);
   return bytes;
 }
 
-function tooLarge(type: DocumentType, adam: string, bytes: number): UpstreamError {
+/** `bytes` when the server declared them; a body cut off at the cap only says it was over. */
+function tooLarge(type: DocumentType, adam: string, bytes?: number): UpstreamError {
+  const size = bytes === undefined ? `over ${MAX_DOCUMENT_BYTES / 1_048_576} MB` : `${Math.round(bytes / 1_048_576)} MB`;
   return new UpstreamError(
-    `The PDF for ΑΔΑΜ "${adam}" is ${Math.round(bytes / 1_048_576)} MB — too large to read here. It can be downloaded from ${documentUrl(type, adam)}.`,
-    { status: 413, details: { adam, bytes } },
+    `The PDF for ΑΔΑΜ "${adam}" is ${size} — too large to read here. It can be downloaded from ${documentUrl(type, adam)}.`,
+    { status: 413, details: { adam, ...(bytes === undefined ? {} : { bytes }) } },
   );
 }
 
@@ -664,13 +669,16 @@ export interface DocumentText {
   pages: string[];
 }
 
-/** The text layer of a PDF, page by page. A scanned act yields empty pages, not an error. */
-export async function extractDocumentText(bytes: Uint8Array): Promise<DocumentText> {
+/**
+ * The text layer of a PDF, page by page. A scanned act yields empty pages,
+ * not an error. Stops between pages once `signal` aborts.
+ */
+export async function extractDocumentText(bytes: Uint8Array, signal: AbortSignal): Promise<DocumentText> {
   // Quiet: pdf.js reports every oddity in a signed government PDF to the console.
   const pdf = await getDocumentProxy(bytes, { verbosity: 0 });
   try {
-    const { totalPages, text } = await extractText(pdf, { mergePages: false });
-    return { pageCount: totalPages, pages: text.map(tidyText) };
+    const pages = await pageTexts(pdf, signal);
+    return { pageCount: pages.length, pages: pages.map(tidyText) };
   } finally {
     await pdf.loadingTask.destroy();
   }

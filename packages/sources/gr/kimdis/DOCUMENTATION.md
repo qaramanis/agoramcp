@@ -508,7 +508,7 @@ is a fresh question.
 | Unknown ΑΔΑΜ | `not_found` | No act is registered under ΑΔΑΜ "…". Check the code, or search for the act instead. |
 | Nothing matched | none | an empty page, `total: 0` |
 | No PDF, or not a PDF | `not_found` | No PDF is published for ΑΔΑΜ "…". |
-| PDF over 30 MB | `upstream_error` (413) | … too large to read here. It can be downloaded from … |
+| PDF over 30 MB, by its declared length or counted as it arrives | `upstream_error` (413) | … too large to read here. It can be downloaded from … |
 | `fromPage` past the end | `invalid_input` | fromPage (…) is past the last page: the PDF has …. |
 | Three 15 s timeouts in a row | `upstream_timeout` | … did not respond within 15000ms. Ask again — the answer is usually ready by then. |
 | 429 | `rate_limited` | from the shared HTTP client |

@@ -13,6 +13,9 @@ export {
 export type { AgoraErrorOptions, ErrorCode } from "./errors.ts";
 
 export { DEFAULT_USER_AGENT, createHttpClient, readCapped } from "./http.ts";
+
+export { pageTexts } from "./pdf.ts";
+export type { PdfDocument } from "./pdf.ts";
 export type {
   HttpClient,
   HttpClientOptions,

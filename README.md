@@ -83,6 +83,9 @@ curl -G --data-urlencode 'ada=9ΓΓ346ΝΨ2Ν-Β5Τ' \
   request's own validation refused, as `issues` naming each field; what a
   handler knew about a failure upstream is never sent, and reaches the
   server's log only with `LOG_TOOL_ARGS=true` (see [Logging](#logging)).
+  A call still running after `TOOL_TIMEOUT_MS` (60 s by default, about where
+  MCP clients give up) is stopped, upstream requests and PDF reading with it,
+  and answered as `upstream_timeout`, retryable, on both doors.
   Statuses: `invalid_input` 400, `not_found` 404, `rate_limited` 429,
   `upstream_error` 502, `upstream_unavailable` and `missing_credentials` 503,
   `upstream_timeout` 504, and `internal` 500 for a bug, whose message is
@@ -127,8 +130,8 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
      (see [Requesters](#requesters)), and any source tokens from
      `.env.example` as needed.
      `PORT` and `HOST` do not apply; Vercel owns the listener, and a
-     non-integer `PORT`, `RATE_LIMIT_PER_MINUTE`, `CACHE_MAX_ENTRIES` or
-     `CACHE_MAX_MB` throws at load.
+     non-integer `PORT`, `RATE_LIMIT_PER_MINUTE`, `CACHE_MAX_ENTRIES`,
+     `CACHE_MAX_MB` or `TOOL_TIMEOUT_MS` throws at load.
    - `web`: `NEXT_PUBLIC_MCP_BASE_URL` and `MCP_SERVER_URL`, both the server
      project's production URL. The first is inlined at build time, so redeploy
      `web` if that URL ever changes. Plus `DATABASE_URL` (Neon's pooled

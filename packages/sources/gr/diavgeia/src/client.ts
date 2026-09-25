@@ -5,11 +5,13 @@ import {
   isAgoraError,
   NotFoundError,
   UpstreamError,
+  pageTexts,
+  readCapped,
   withCache,
   type AgoraError,
   type Cache,
 } from "@agoramcp/core";
-import { extractText, getDocumentProxy } from "unpdf";
+import { getDocumentProxy } from "unpdf";
 
 /**
  * The OpenData tree is read-only and unauthenticated. The authenticated half of
@@ -696,26 +698,29 @@ export async function fetchDecisionDocument(ada: string, signal: AbortSignal): P
 
   const declared = Number(response.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_DOCUMENT_BYTES) {
-    await response.arrayBuffer().catch(() => undefined);
+    await response.body?.cancel().catch(() => undefined);
     throw tooLarge(ada, declared);
   }
 
   // An unknown ΑΔΑ is redirected to the old site rather than refused, and the
   // client follows redirects — so what came back is checked, not assumed.
   if (!(response.headers.get("content-type") ?? "").includes("application/pdf")) {
-    await response.arrayBuffer().catch(() => undefined);
+    await response.body?.cancel().catch(() => undefined);
     throw new NotFoundError(`No PDF is published for ΑΔΑ "${ada}".`, { details: { ada } });
   }
 
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.byteLength > MAX_DOCUMENT_BYTES) throw tooLarge(ada, bytes.byteLength);
+  // Counted as it arrives: a length header is a claim, and a chunked answer makes none.
+  const bytes = await readCapped(response, MAX_DOCUMENT_BYTES);
+  if (!bytes) throw tooLarge(ada);
   return bytes;
 }
 
-function tooLarge(ada: string, bytes: number): UpstreamError {
+/** `bytes` when the server declared them; a body cut off at the cap only says it was over. */
+function tooLarge(ada: string, bytes?: number): UpstreamError {
+  const size = bytes === undefined ? `over ${MAX_DOCUMENT_BYTES / 1_048_576} MB` : `${Math.round(bytes / 1_048_576)} MB`;
   return new UpstreamError(
-    `The PDF for ΑΔΑ "${ada}" is ${Math.round(bytes / 1_048_576)} MB — too large to read here. It can be downloaded from ${BASE_URL}decisions/${ada}/document.`,
-    { status: 413, details: { ada, bytes } },
+    `The PDF for ΑΔΑ "${ada}" is ${size} — too large to read here. It can be downloaded from ${BASE_URL}decisions/${ada}/document.`,
+    { status: 413, details: { ada, ...(bytes === undefined ? {} : { bytes }) } },
   );
 }
 
@@ -725,13 +730,16 @@ export interface DecisionText {
   pages: string[];
 }
 
-/** The text layer of a PDF, page by page. A scanned act yields empty pages, not an error. */
-export async function extractDecisionText(bytes: Uint8Array): Promise<DecisionText> {
+/**
+ * The text layer of a PDF, page by page. A scanned act yields empty pages,
+ * not an error. Stops between pages once `signal` aborts.
+ */
+export async function extractDecisionText(bytes: Uint8Array, signal: AbortSignal): Promise<DecisionText> {
   // Quiet: pdf.js reports every oddity in a signed government PDF to the console.
   const pdf = await getDocumentProxy(bytes, { verbosity: 0 });
   try {
-    const { totalPages, text } = await extractText(pdf, { mergePages: false });
-    return { pageCount: totalPages, pages: text.map(tidyText) };
+    const pages = await pageTexts(pdf, signal);
+    return { pageCount: pages.length, pages: pages.map(tidyText) };
   } finally {
     // Frees the parsed document and its worker; the proxy has no destroy of its own.
     await pdf.loadingTask.destroy();

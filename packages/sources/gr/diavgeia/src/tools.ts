@@ -398,7 +398,7 @@ export const getDecisionTextTool = defineTool({
       context.cache,
       cacheKey("gr/diavgeia:decision_text", input.ada),
       context.ttl,
-      async () => extractDecisionText(await fetchDecisionDocument(input.ada, context.signal)),
+      async () => extractDecisionText(await fetchDecisionDocument(input.ada, context.signal), context.signal),
     );
 
     const fromPage = input.fromPage ?? 1;

@@ -1,4 +1,4 @@
-import { NotFoundError, createLogger, createMemoryCache, defineSource, defineTool, type LogFields } from "@agoramcp/core";
+import { NotFoundError, UpstreamTimeoutError, createLogger, createMemoryCache, defineSource, defineTool, type LogFields } from "@agoramcp/core";
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { z } from "zod";
@@ -21,6 +21,18 @@ const lookup = defineTool({
   },
 });
 
+/** Waits until its signal aborts, as a handler stuck on a slow registry would. */
+const stuck = defineTool({
+  name: "stuck",
+  title: "Stuck",
+  description: "Test tool.",
+  inputSchema: {},
+  handler: (_input, context) =>
+    new Promise((_resolve, reject) => {
+      context.signal.addEventListener("abort", () => reject(context.signal.reason), { once: true });
+    }),
+});
+
 const source = defineSource({
   id: "test",
   country: "gr",
@@ -33,23 +45,27 @@ const source = defineSource({
     attribution: "Test",
     ttl: { default: 0 },
   },
-  tools: [lookup],
+  tools: [lookup, stuck],
 });
 
-function run(vatNumber: string, toolArgs: boolean) {
-  const lines: LogFields[] = [];
-  const records: ToolCallRecord[] = [];
-  const deps: ToolDeps = {
+function deps(toolArgs: boolean, lines: LogFields[], records: ToolCallRecord[], deadlineMs = 10_000): ToolDeps {
+  return {
     cache: createMemoryCache(),
     logger: createLogger({ level: "debug", write: (line) => lines.push(JSON.parse(line) as LogFields) }),
     env: {},
+    deadlineMs,
     transport: "api",
     mount: "gr/test",
     requestId: "req-1",
     log: { slowToolMs: 10_000, toolArgs },
     record: (record) => records.push(record),
   };
-  const call = callTool(source, lookup, { vatNumber }, deps, new AbortController().signal);
+}
+
+function run(vatNumber: string, toolArgs: boolean) {
+  const lines: LogFields[] = [];
+  const records: ToolCallRecord[] = [];
+  const call = callTool(source, lookup, { vatNumber }, deps(toolArgs, lines, records), new AbortController().signal);
   const outcome = (message: string) => lines.find((line) => line.message === message);
   return { call, lines, records, outcome };
 }
@@ -91,5 +107,29 @@ describe("callTool", () => {
       ["calledAt", "code", "durationMs", "ok", "requestId", "source", "tool", "transport"],
     );
     assert.deepEqual([r.records[0]!.ok, r.records[0]!.code], [false, "not_found"]);
+  });
+});
+
+describe("the call's deadline", () => {
+  test("a handler still working at the deadline is stopped and answered as upstream_timeout", async () => {
+    const lines: LogFields[] = [];
+    const records: ToolCallRecord[] = [];
+    await assert.rejects(callTool(source, stuck, {}, deps(false, lines, records, 50), new AbortController().signal), (error) => {
+      assert.ok(error instanceof UpstreamTimeoutError);
+      assert.match(error.message, /did not answer within 0\.05 s/);
+      return true;
+    });
+    assert.equal(lines.find((line) => line.message === "tool.failed")?.level, "warn");
+    assert.deepEqual([records[0]?.ok, records[0]?.code], [false, "upstream_timeout"]);
+  });
+
+  test("a caller who leaves first is an abort, logged and not recorded", async () => {
+    const lines: LogFields[] = [];
+    const records: ToolCallRecord[] = [];
+    const caller = new AbortController();
+    setTimeout(() => caller.abort(), 20);
+    await assert.rejects(callTool(source, stuck, {}, deps(false, lines, records, 10_000), caller.signal), (error) => (error as Error).name === "AbortError");
+    assert.ok(lines.some((line) => line.message === "tool.aborted"));
+    assert.equal(records.length, 0);
   });
 });

@@ -36,6 +36,7 @@ const record = config.databaseUrl ? createCallRecorder(config.databaseUrl, logge
 const shared = {
   cache,
   env: process.env,
+  deadlineMs: config.toolTimeoutMs,
   log: { slowToolMs: config.slowToolMs, toolArgs: config.logToolArgs },
 };
 
