@@ -29,6 +29,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.29",
+    title: "Stop sending a failure's internal details to API callers",
+    body: [
+      "An HTTP API error carried the `AgoraError`'s `details` verbatim, and a handler's details are written for the log: the full upstream URL, the first 500 bytes of the upstream's raw reply, the query as it was built, data.gov.gr's Solr error with the parameters it ran. Nothing secret went out, since no source uses a key yet, but the day one puts a token in a URL it would have gone out on the first failure. The MCP mounts never sent them.",
+      "`apiError` in `apps/server/src/api.ts` now sends `details` only when it is handed them, which is only for a 400 the request's own validation refused: `issues`, naming each field, as the example on `/api` has always shown. Every other failure is its code, message and whether to retry. The README's HTTP API section says so.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.28",
     title: "Identify a requester the same way on the site and the server",
     body: [

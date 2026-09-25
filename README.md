@@ -67,10 +67,13 @@ curl -G --data-urlencode 'ada=9ΓΓ346ΝΨ2Ν-Β5Τ' \
   stateless request has to carry the attribution every time; an MCP session is
   told once.
 - Errors are `{ "error": { "code", "message", "retryable", "details"? } }` with
-  the `AgoraError`'s own HTTP status: `invalid_input` 400, `not_found` 404,
-  `rate_limited` 429, `upstream_error` 502, `upstream_unavailable` and
-  `missing_credentials` 503, `upstream_timeout` 504. Verbs other than GET and
-  POST get a 405.
+  the `AgoraError`'s own HTTP status. `details` comes only with a 400 the
+  request's own validation refused, as `issues` naming each field; what a
+  handler knew about a failure upstream is never sent, and reaches the
+  server's log only with `LOG_TOOL_ARGS=true` (see [Logging](#logging)).
+  Statuses: `invalid_input` 400, `not_found` 404, `rate_limited` 429,
+  `upstream_error` 502, `upstream_unavailable` and `missing_credentials` 503,
+  `upstream_timeout` 504. Verbs other than GET and POST get a 405.
 - `GET /{country}/api` lists the country's sources and where each tool answers;
   `GET /{country}/api/{source}` adds every tool's input schema and example.
 - Successful GETs carry `Cache-Control: max-age` equal to the tool's cache TTL.
