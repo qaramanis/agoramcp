@@ -30,7 +30,19 @@ pnpm install
 pnpm dev            # MCP server on :3000
 pnpm dev:web        # landing page on :3001
 pnpm typecheck
+pnpm test           # every *.test.ts, offline, in a few seconds
 ```
+
+Tests sit beside the code they cover as `*.test.ts` and run on Node's own
+runner (`node:test`) under `tsx`, the way the server does, so there is nothing
+to build and no framework to learn. They never reach a registry: an HTTP client
+is tested against a server started in the test, and `apps/server/src/app.test.ts`
+drives the whole app through `app.fetch` in memory. The first set covers what
+fails worst when it breaks: the address guard and byte caps in `packages/core`,
+the cache, the requester id, the parsers and query builders that turn caller
+input into upstream queries, and the server's limits and error shapes, including
+that no argument reaches a log line unless `LOG_TOOL_ARGS` is on. A new source
+brings tests for its parsers and query builders with it.
 
 Verify a source with the official inspector:
 

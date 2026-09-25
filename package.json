@@ -10,10 +10,12 @@
     "start": "pnpm --filter @agoramcp/server start",
     "start:web": "pnpm --filter @agoramcp/web start",
     "typecheck": "pnpm -r typecheck",
+    "test": "tsx --test \"packages/*/src/**/*.test.ts\" \"packages/sources/*/*/src/**/*.test.ts\" \"apps/server/src/**/*.test.ts\"",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.0"
   },
   "packageManager": "pnpm@11.24.0"

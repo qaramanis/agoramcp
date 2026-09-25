@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.32",
+    title: "Add the first tests: 136, offline, in under four seconds",
+    body: [
+      "There were none. `pnpm test` now runs every `*.test.ts` in the workspace on Node's own test runner under `tsx`, the way the server runs, so there is no build and no framework: `tsx` joins the root's dev dependencies and nothing else is added. Tests sit beside the code they cover, and none reaches a registry. HTTP clients are tested against a server the test starts, and `apps/server/src/app.test.ts` drives the whole app through `app.fetch` in memory.",
+      "`packages/core` is covered where it guards: `fetchUntrusted` refusing loopback, private and metadata addresses in every spelling while its trap server counts zero requests, `readCapped` stopping at the cap without pulling the rest, the HTTP client's retries, timeouts and error mapping, the cache's size budget, LRU order and TTL, `withCache` sharing a load and recovering from a starter's abort, and the requester id. `packages/ckan` gets its CSV and JSON readers and a fake CKAN that checks every Solr filter value is quoted and escaped; VIES its ΑΦΜ check digit and number forms; Diavgeia its Lucene query builder and calendar arithmetic; NOA its time windows and catalogue parser.",
+      "The server's tests pin down this week's fixes: JSON-RPC batches refused, bodies over 64 KB refused on both doors, a handler's details kept from API callers, the rate limit per requester and per source with the /live proxy's visitor sharing the budget they spent directly and a forged requester ignored, request ids kept or replaced, and no argument on a log line unless `LOG_TOOL_ARGS` is on. Undoing four of those fixes one at a time fails the suite each time. The README says how the tests are laid out.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.31",
     title: "Send security headers from every page of the site",
     body: [
