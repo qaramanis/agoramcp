@@ -9,6 +9,7 @@ import type { ToolDeps, Transport } from "./call.ts";
 import { loadConfig } from "./config.ts";
 import { createBundleServer, createSourceServer, SERVER_VERSION, type CallTrace } from "./mcp.ts";
 import { PROBE_HEADER, requestLogger, type CallSummary } from "./middleware/logging.ts";
+import { createIdentify } from "./middleware/client.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
 import { createCallRecorder } from "./record.ts";
 import {
@@ -65,7 +66,9 @@ app.get("/", (c) =>
   }),
 );
 
-const limiter = createRateLimiter(config.rateLimitPerMinute);
+const identify = createIdentify({ salt: config.requestHashSalt, proxySecret: config.proxySecret });
+
+const limiter = createRateLimiter(config.rateLimitPerMinute, identify);
 if (limiter) {
   // Both mounts, or the country server would ship without a limit.
   app.use("/:country/mcp", limiter);
@@ -74,7 +77,7 @@ if (limiter) {
 
 // The API's budget stops at the source, like the MCP mounts', so a script
 // gets one allowance per registry rather than one per tool it happens to use.
-const apiLimiter = createRateLimiter(config.rateLimitPerMinute, {
+const apiLimiter = createRateLimiter(config.rateLimitPerMinute, identify, {
   scope: (c) => apiPath(c.req.param("country") ?? "", c.req.param("source") ?? ""),
   message: {
     error: {

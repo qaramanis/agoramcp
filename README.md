@@ -104,8 +104,10 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
 3. **Variables.**
    - `server`: `VERCEL_EXPERIMENTAL_BACKENDS=1` (required, see step 2), then
      `CORS_ORIGINS`, `DATABASE_URL` (the web project's pooled string, for the
-     status history — see [Configuration](#configuration)) and any source
-     tokens from `.env.example` as needed.
+     status history — see [Configuration](#configuration)),
+     `REQUEST_HASH_SALT` and `PROXY_SECRET`, both the web project's values
+     (see [Requesters](#requesters)), and any source tokens from
+     `.env.example` as needed.
      `PORT` and `HOST` do not apply; Vercel owns the listener, and a
      non-integer `PORT`, `RATE_LIMIT_PER_MINUTE`, `CACHE_MAX_ENTRIES` or
      `CACHE_MAX_MB` throws at load.
@@ -113,7 +115,8 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
      project's production URL. The first is inlined at build time, so redeploy
      `web` if that URL ever changes. Plus `DATABASE_URL` (Neon's pooled
      string) and `REQUEST_HASH_SALT` for `/country` — see [Database](#database) —
-     and `CRON_SECRET` for the status cron.
+     `PROXY_SECRET` for the `/live` proxy, and `CRON_SECRET` for the status
+     cron.
 
 One dev dependency exists for Vercel's sake: `apps/server` lists `undici-types`
 because Vercel type-checks the entry with a resolver that does not follow
@@ -241,6 +244,25 @@ carry the names of the validated arguments, `argNames`, and not their values:
 is personal data for a sole trader. `LOG_TOOL_ARGS=true` puts the values on as
 `args`, cut to a preview past 2 KB, for debugging; switch it off again after,
 because while it is on the privacy page is not true.
+
+### Requesters
+
+A requester is whoever is asking, without an account: `requesterId` in
+`packages/core/src/requester.ts`, an HMAC-SHA256 of the client's address keyed
+by `REQUEST_HASH_SALT`, IPv6 by its /64 and never the user agent, which a caller
+sets itself. It is the one definition of a person across the system: the web
+app files a `/country` request under it (importing the file as
+`@agoramcp/core/requester`) and the server's rate limiter counts under it, so
+one person has one budget per source whether they call the HTTP API, an MCP
+mount or the `/live` playground.
+
+The playground reaches the server from the web app's own address, so its proxy
+names the visitor in `x-agoramcp-requester` and proves it is the web app with
+`x-agoramcp-proxy: $PROXY_SECRET`. The server believes the first only beside the
+second; from anyone else it is ignored, so a script cannot name a fresh
+requester per call. With `REQUEST_HASH_SALT` unset on the server, the limiter
+keys on the raw address; with `PROXY_SECRET` unset on either app, every
+playground call counts against the web app.
 
 ### Call records and the status history
 

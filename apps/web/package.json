@@ -16,6 +16,7 @@
     "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {
+    "@agoramcp/core": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "hamburger-react": "^2.5.2",
     "lucide-react": "^1.35.0",

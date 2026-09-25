@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.28",
+    title: "Identify a requester the same way on the site and the server",
+    body: [
+      "`requesterId` in `packages/core/src/requester.ts` is now the one definition of who is asking: an HMAC-SHA256 of the client's address keyed by `REQUEST_HASH_SALT`, an IPv6 address by its /64 (a household picks addresses inside it at will) and an IPv4-mapped one as its IPv4. The user agent is no longer part of it, since a caller sets that header itself and a new one made a new person. The web app imports the file as `@agoramcp/core/requester`, its first workspace dependency, compiled through `transpilePackages`.",
+      "The `/country` form files requests under it, so changing browser no longer buys a second vote. Hashes filed before this change were made the old way and no longer match, so each earlier requester can ask for each country once more. The server's rate limiter counts under it too, given the same salt, instead of the raw address.",
+      "The `/live` proxy reaches the server from the site's own address, which put every visitor on one budget, and made the site a way around a spent one. It now sends the visitor's id in `x-agoramcp-requester`, with `x-agoramcp-proxy` carrying `PROXY_SECRET` to prove it is the site; the server believes the id only beside the secret, compared in constant time. One person now has one budget per source across the API, the MCP mounts and the playground. `/privacy` says the hash is of the address alone and that the rate limit counts it, and the README gains a Requesters section and the two variables for each project.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.27",
     title: "Add the mobile navigation menu",
     body: [

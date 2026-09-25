@@ -47,7 +47,7 @@ export const privacy: LegalDocument = {
   ],
   inShort: [
     "No accounts, no cookies, nothing loaded from anyone but the host. Page views are counted by Vercel without a cookie, and the hash that tells one visit from the next is kept for a day at most.",
-    "Requesting a country stores the country and a salted hash of your address and browser, never the address itself.",
+    "Requesting a country stores the country and a salted hash of your address, never the address itself.",
     "The servers log one line per request: what was asked, how long it took, and a request id. Not who asked.",
     "The registries see our server, not you.",
   ],
@@ -74,7 +74,7 @@ export const privacy: LegalDocument = {
     {
       title: "Requesting a country",
       body: [
-        "The one form on the site. Pressing the button stores the country you asked for, the moment you asked, and a SHA-256 hash of your address and browser signature, salted with a secret that never leaves the server. The hash is what lets one person count once per country. It cannot be turned back into an address without the salt, and the address itself is never written down. The row stays for as long as the count is shown.",
+        "The one form on the site. Pressing the button stores the country you asked for, the moment you asked, and a SHA-256 hash of your address, salted with a secret that never leaves our servers. For an IPv6 address the hash is of its first half, the part your network was given, since your devices pick the rest and change it daily. The hash is what lets one person count once per country, and a new browser does not make a new person. It cannot be turned back into an address without the salt, and the address itself is never written down. The row stays for as long as the count is shown.",
       ],
       link: { label: "Request a country", href: "/country" },
     },
@@ -82,7 +82,7 @@ export const privacy: LegalDocument = {
       title: "Using the tools",
       body: [
         "Whatever you send to a tool, through an MCP client, the HTTP API or the live playground, goes to our server and on to the registry that holds the answer. The server keeps one structured log line per request: the method and path, the status, how long it took, and the `x-request-id` it also returns to you. It does not log your address, your arguments or what came back.",
-        "Your address is held in memory for one minute to enforce the per-source rate limit, and is gone with the minute.",
+        "The per-source rate limit counts you by the same salted hash, held in memory for one minute and gone with it. Calls from the live playground reach our server from the site, so the site passes your hash along with a secret the two share, and the limit counts you, not the site.",
       ],
       link: { label: "The API and its limits", href: "/api" },
     },
@@ -103,7 +103,7 @@ export const privacy: LegalDocument = {
       title: "Your rights",
       body: [
         "Under the GDPR you can ask what is held about you, have it corrected or erased, object to its being kept, or take a copy, and complain to your supervisory authority if the answer does not satisfy. Write to hello@agoramcp.eu.",
-        "The one thing we keep, the hash from the country form, is built so that we cannot tell which row is yours. To erase it we would recompute it from the address and browser you used, with your help.",
+        "The one thing we keep, the hash from the country form, is built so that we cannot tell which row is yours. To erase it we would recompute it from the address you used, with your help.",
       ],
     },
     {

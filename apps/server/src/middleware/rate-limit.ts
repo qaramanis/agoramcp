@@ -1,6 +1,5 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { rateLimiter } from "hono-rate-limiter";
-import { clientAddress } from "./client.ts";
 
 export interface RateLimitOptions {
   /**
@@ -23,13 +22,15 @@ const JSON_RPC_MESSAGE: Record<string, unknown> = {
 };
 
 /**
- * Per-client, per-source budget. Keyed by scope as well as address so a caller
- * hammering one source cannot exhaust another's allowance.
+ * Per-requester, per-source budget. Keyed by scope as well as requester so a
+ * caller hammering one source cannot exhaust another's allowance. `identify`
+ * names the requester (`createIdentify`).
  *
  * Returns undefined when limiting is switched off.
  */
 export function createRateLimiter(
   perMinute: number,
+  identify: (c: Context) => string,
   options: RateLimitOptions = {},
 ): MiddlewareHandler | undefined {
   if (perMinute <= 0) return undefined;
@@ -40,7 +41,7 @@ export function createRateLimiter(
     windowMs: 60_000,
     limit: perMinute,
     standardHeaders: "draft-7",
-    keyGenerator: (c) => `${clientAddress(c)}:${scope(c)}`,
+    keyGenerator: (c) => `${identify(c)}:${scope(c)}`,
     message: options.message ?? JSON_RPC_MESSAGE,
   });
 }
