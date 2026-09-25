@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ChevronRight } from "lucide-react";
 import { columnGapClass } from "@/components/layout/grid";
 import CodeBlock from "@/components/mcp/code-block";
 import { Code } from "@/components/mcp/inline";
@@ -103,12 +103,23 @@ export default function QuestionTabs({ header }: { header: ReactNode }) {
                 className="group cursor-pointer py-2 text-left"
               >
                 <span
-                  className={`block text-[13px] transition-colors duration-300 ${
+                  className={`flex items-center gap-1 text-[13px] transition duration-500 ease-out ${
                     selected
-                      ? "text-accent"
-                      : "text-muted-foreground group-hover:text-foreground"
+                      ? "translate-x-0 text-accent"
+                      : "-translate-x-4 text-muted-foreground group-hover:text-foreground"
                   }`}
                 >
+                  {/* The chevron is part of the title, and the title slides
+                      back by its width plus the gap when deselected, so the
+                      unselected titles sit on the heading's edge with the
+                      chevron faded out in the gutter. Only the chevron fades. */}
+                  <ChevronRight
+                    size={12}
+                    aria-hidden
+                    className={`shrink-0 transition-opacity duration-500 ease-out ${
+                      selected ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
                   {/* The numbering is this page's: the data carries the plain
                       title, which the nav and the use-case pages show as is. */}
                   {`Example ${i + 1}: ${entry.title}`}
