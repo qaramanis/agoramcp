@@ -211,6 +211,14 @@ async function runServer(
   const rpc = summariseRpc(body);
   if (rpc) c.set("rpc", rpc);
 
+  // MCP dropped JSON-RPC batches in 2025-06-18, but the transport still runs
+  // one — every message at once, behind a single request the rate limiter
+  // counts once. One message per request keeps a budget a budget.
+  if (Array.isArray(body)) {
+    log.warn("request.rejected", { path: c.req.path, status: 400, reason: BATCH_REFUSED, batch: body.length });
+    return c.json({ jsonrpc: "2.0", error: { code: -32600, message: BATCH_REFUSED }, id: null }, 400);
+  }
+
   const calledName = calledToolName(body);
   const call = calledName === undefined ? undefined : resolve(calledName);
   if (call) c.set("call", call);
@@ -253,6 +261,8 @@ async function runServer(
     });
   }
 }
+
+const BATCH_REFUSED = "Batch requests are not supported. Send one JSON-RPC message per request.";
 
 /** The SDK's own explanation, from the buffered reply. */
 async function rejection(response: Response): Promise<string | undefined> {

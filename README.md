@@ -224,21 +224,23 @@ when the status page's check made the call.
 
 | event | level | when |
 |---|---|---|
-| `request` | info | Every HTTP request: method, path, status, duration, the caller's address and user agent. On an MCP mount also `rpcMethod` — `initialize`, `tools/list`, `tools/call` — with the client's name and version on `initialize`, and for a `tools/call` the `source` and `tool` it resolved to; a qualified name on the country server is resolved to the registry that answers it. |
-| `tool.ok` | info | The handler returned: `source`, `tool`, `args`, `durationMs`, `resultBytes`, and `cache` (`gets` and `hits`). Logged as a warning with `slow: true` past `LOG_SLOW_TOOL_MS`. |
-| `tool.failed` | info · warn · error | The handler threw. `error` carries the `AgoraError`'s `code`, `status`, `retryable`, `details` and `cause`; a stack only when the error was not one a source throws on purpose. `warn` for an upstream that is down, rate-limiting or unconfigured; `info` for `not_found` and `invalid_input`, which are the caller's; `error` for anything unexpected. |
+| `request` | info | Every HTTP request: method, path, status and duration, never the caller's address or user agent. On an MCP mount also `rpcMethod` — `initialize`, `tools/list`, `tools/call` — with the client's name and version on `initialize`, and for a `tools/call` the `source` and `tool` it resolved to; a qualified name on the country server is resolved to the registry that answers it. |
+| `tool.ok` | info | The handler returned: `source`, `tool`, `argNames` (or `args`, below), `durationMs`, `resultBytes`, and `cache` (`gets` and `hits`). Logged as a warning with `slow: true` past `LOG_SLOW_TOOL_MS`. |
+| `tool.failed` | info · warn · error | The handler threw. `error` carries the `AgoraError`'s `name`, `code`, `status` and `retryable`, and with `LOG_TOOL_ARGS=true` also its message, `details` and `cause`, which quote the arguments; an error that was not one a source throws on purpose carries its message and stack either way. `warn` for an upstream that is down, rate-limiting or unconfigured; `info` for `not_found` and `invalid_input`, which are the caller's; `error` for anything unexpected. |
 | `tool.aborted` | info | The caller disconnected before the handler finished. |
 | `tool.rejected` | info | A call refused before any handler ran: on an MCP mount an unknown tool name or arguments the schema would not take, on the API a query or body that failed strict validation. `reason` is the message the caller was sent. |
-| `request.rejected` | warn | The MCP transport refused the request itself — the wrong `Accept` or `Content-Type`, a body that is not JSON — and its own 4xx was sent. |
+| `request.rejected` | warn | The MCP transport refused the request itself — the wrong `Accept` or `Content-Type`, a body that is not JSON — and its own 4xx was sent; or the body was a JSON-RPC batch, which is refused with a 400 before it reaches the transport (`batch` is how many messages it held). |
 | `mcp.protocol_error` | warn | The MCP SDK reported an error of its own, such as a reply it could not send. |
 | `record.failed` | warn | A call's outcome could not be written to the database (below). |
-| `tool.start` | debug | The handler is about to run, with the arguments. Off at the default level; its one use is to leave a trace of a call the host kills before the outcome line is written. |
+| `tool.start` | debug | The handler is about to run, with the argument names (the values with `LOG_TOOL_ARGS=true`). Off at the default level; its one use is to leave a trace of a call the host kills before the outcome line is written. |
 
 `LOG_LEVEL` sets the threshold (`debug`, `info`, `warn`, `error`, `silent`).
-`LOG_SLOW_TOOL_MS` (default 10000) is the slow threshold. `LOG_TOOL_ARGS`
-(default on) puts the validated arguments on the `tool.*` lines, cut to a
-preview past 2 KB; turn it off where the log store must not hold personal
-data — a VAT number is personal data for a sole trader.
+`LOG_SLOW_TOOL_MS` (default 10000) is the slow threshold. The `tool.*` lines
+carry the names of the validated arguments, `argNames`, and not their values:
+`/privacy` promises that no address and no argument is logged, and a VAT number
+is personal data for a sole trader. `LOG_TOOL_ARGS=true` puts the values on as
+`args`, cut to a preview past 2 KB, for debugging; switch it off again after,
+because while it is on the privacy page is not true.
 
 ### Call records and the status history
 

@@ -6,7 +6,7 @@ export interface Config {
   logLevel: LogLevel;
   /** A successful tool call slower than this, in milliseconds, is logged as a warning. */
   slowToolMs: number;
-  /** Whether a tool's arguments go on its log line. */
+  /** Whether a tool's argument values go on its log line; off, only their names. */
   logToolArgs: boolean;
   /** Where call outcomes are recorded for the status history. Unset: nowhere. */
   databaseUrl: string | undefined;
@@ -27,7 +27,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: intFromEnv(env.PORT, 3000),
     logLevel: parseLogLevel(env.LOG_LEVEL, "info"),
     slowToolMs: intFromEnv(env.LOG_SLOW_TOOL_MS, 10_000),
-    logToolArgs: boolFromEnv(env.LOG_TOOL_ARGS, true),
+    logToolArgs: boolFromEnv(env.LOG_TOOL_ARGS, false),
     databaseUrl: env.DATABASE_URL?.trim() || undefined,
     corsOrigins:
       origins === "*"

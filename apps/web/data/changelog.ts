@@ -29,6 +29,49 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.27",
+    title: "Add the mobile navigation menu",
+    body: [
+      "Below the `md` breakpoint the nav had only the logo. It now has the hamburger menu from bloom.ai, the same reference the desktop pill was copied from: a Squash toggle from `hamburger-react` slides a full-width panel in from the right over a blurred backdrop. Product, Use cases and Resources open as an accordion, one at a time, and a Connect button to `/quickstart` sits at the bottom. The panel locks the page's scroll while open and closes on a link, an outside tap or Escape.",
+      "The mobile menu has no cover-image cards. Quickstart, View live and Request a country are plain links under their headings, after the rows the desktop panel lists beside them. The menu lives in `components/navigation/navigation-mobile.tsx`.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.26",
+    title: "Keep addresses and argument values out of the server's logs",
+    body: [
+      "`/privacy` promises that the server logs what was asked, not who asked, and never the arguments. The code had drifted from that: every `request` line carried the caller's address and user agent, and `LOG_TOOL_ARGS` was on by default, so a VAT number or a name searched for in Diavgeia went into the log store with every call. The `request` line now carries neither the address nor the user agent; the address is still read, by the rate limiter alone, and held for its minute.",
+      "`LOG_TOOL_ARGS` now defaults to off, and the `tool.*` lines carry `argNames`, the names of the validated arguments, instead of their values. A failed call's line keeps the error's name, code, status and whether it is worth retrying, but not its message or details, which quote what was asked (the ΑΔΑ not found, the upstream URL with the VAT number in its path). An error no source throws on purpose keeps its message and stack. Setting `LOG_TOOL_ARGS=true` brings the values and the full error back for debugging. The README and `.env.example` say so, and the privacy page moves its date.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.25",
+    title: "Refuse JSON-RPC batches on the MCP endpoints",
+    body: [
+      "The MCP transport ran every message of an array body at once, behind one request the rate limiter counted once, so a single POST could make any number of tool calls against a budget of 60 a minute. MCP dropped batches in its 2025-06-18 revision. `runServer` in `apps/server/src/index.ts` now answers an array with a 400 and JSON-RPC error `-32600` before the transport sees it, logged as `request.rejected` with the batch's length. Single messages are unchanged, and a refused batch still counts against the limit.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.24",
+    title: "Refuse non-public addresses in read_resource and cap what it holds",
+    body: [
+      "`read_resource` fetched a resource's link with a plain `fetch`: any host the publisher named, redirects followed anywhere, and the whole body read before the 8 MB check. It now goes through `fetchUntrusted` in `packages/core/src/untrusted.ts`, built on `node:http` with a guarded `lookup`. Only http and https are fetched, and every address it connects to, after DNS and on each of up to five redirects, must be on the public internet. A link to a private, loopback or link-local address is refused as `invalid_input` without being fetched.",
+      "`readCapped` in `packages/core/src/http.ts` counts the body as it arrives, after decompression, and stops at the cap, so a file sent with no length, or a small compressed one that inflates to hundreds of megabytes, is refused at 8 MB. The memory cache now evicts by size as well as by count, under `CACHE_MAX_MB` (default 256), since one entry can be a whole file. The datagov `DOCUMENTATION.md` describes the new refusal.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.23",
+    title: "Mark the selected question with a chevron",
+    body: [
+      "Each title in the Questions list of `components/use-cases/question-tabs.tsx` now starts with lucide's `ChevronRight`, in the title's own colour. The selected title sits one chevron and gap to the right; a deselected one slides back left by that width, so its text lines up with the heading and its chevron fades out in the gutter. Only the chevron fades: the title moves with it and keeps its opacity. The slide, the fade and the title's colour share one 500 ms ease-out, where the colour alone used to take 300 ms.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.22",
     title: "Count page views with Vercel Web Analytics",
     body: [
