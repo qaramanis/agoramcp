@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Landmark } from "lucide-react";
 import NavigationDesktop from "./navigation-desktop";
+import NavigationMobile from "./navigation-mobile";
 
 export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -42,6 +43,7 @@ export default function Navigation() {
         >
           Connect
         </Link>
+        <NavigationMobile />
       </div>
     </nav>
   );

@@ -29,6 +29,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.27",
+    title: "Add the mobile navigation menu",
+    body: [
+      "Below the `md` breakpoint the nav had only the logo. It now has the hamburger menu from bloom.ai, the same reference the desktop pill was copied from: a Squash toggle from `hamburger-react` slides a full-width panel in from the right over a blurred backdrop. Product, Use cases and Resources open as an accordion, one at a time, and a Connect button to `/quickstart` sits at the bottom. The panel locks the page's scroll while open and closes on a link, an outside tap or Escape.",
+      "The mobile menu has no cover-image cards. Quickstart, View live and Request a country are plain links under their headings, after the rows the desktop panel lists beside them. The menu lives in `components/navigation/navigation-mobile.tsx`.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.26",
     title: "Keep addresses and argument values out of the server's logs",
     body: [
