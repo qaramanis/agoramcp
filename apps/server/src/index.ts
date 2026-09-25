@@ -23,7 +23,7 @@ import { calledToolName, summariseRpc } from "./rpc.ts";
 
 const config = loadConfig();
 const logger = createLogger({ level: config.logLevel, base: { service: "agoramcp" } });
-const cache = createMemoryCache({ maxEntries: config.cacheMaxEntries });
+const cache = createMemoryCache({ maxEntries: config.cacheMaxEntries, maxBytes: config.cacheMaxBytes });
 const registry = buildRegistry();
 const bundles = buildBundles(registry);
 

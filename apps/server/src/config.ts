@@ -15,6 +15,8 @@ export interface Config {
   /** Requests per minute per client, per source. 0 disables the limiter. */
   rateLimitPerMinute: number;
   cacheMaxEntries: number;
+  /** What the cache may hold before it evicts, in bytes. */
+  cacheMaxBytes: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -36,6 +38,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
             .filter((origin) => origin !== ""),
     rateLimitPerMinute: intFromEnv(env.RATE_LIMIT_PER_MINUTE, 60),
     cacheMaxEntries: intFromEnv(env.CACHE_MAX_ENTRIES, 5_000),
+    cacheMaxBytes: intFromEnv(env.CACHE_MAX_MB, 256) * 1024 * 1024,
   };
 }
 
