@@ -172,9 +172,9 @@ migrations are the schema.
 
 ```bash
 pnpm --filter @agoramcp/web db:migrate              # run what is pending, as one batch
-pnpm --filter @agoramcp/web db:rollback             # reverse the last batch
+pnpm --filter @agoramcp/web db:rollback             # reverse the last batch, after asking
 pnpm --filter @agoramcp/web db:rollback --step=1    # or the last N migrations
-pnpm --filter @agoramcp/web db:reset                # reverse everything
+pnpm --filter @agoramcp/web db:reset                # reverse everything, after asking
 pnpm --filter @agoramcp/web db:status               # what has run, what has not
 pnpm --filter @agoramcp/web db:make add_x_to_y      # scaffold a new migration
 pnpm --filter @agoramcp/web db:seed                 # every seeder; `db:seed countries` for one
@@ -184,6 +184,18 @@ Each migration runs in a transaction with its own bookkeeping row, so one that
 fails leaves nothing behind. The scripts read `apps/web/.env.local` and use
 `DATABASE_URL_UNPOOLED` where it is set — a DDL transaction has to stay on one
 server session, which Neon's pooler does not promise.
+
+Every run starts by naming the database it reached (`Database     host/name`)
+and holds a Postgres advisory lock for as long as it runs, so a second
+migration or seed against the same database is turned away rather than
+interleaved. `db:rollback` and `db:reset` then list the migrations they would
+reverse and go on only when the database's name is typed back: a `down` drops
+its table and every row in it, and `.env.local` points wherever it points —
+production, if it was copied from the Vercel project. `--force` skips the
+question (`db:reset --force`); without a terminal to ask in, nothing is
+reversed without it. To try a migration's `down`, point both URLs at a
+database of your own first — a Neon branch, or any local Postgres — since the
+file fills in whichever one the environment leaves unset.
 
 `db:seed countries` loads the full ISO 3166-1 list from `apps/web/data/countries.ts`
 and marks the countries with a source mounted as supported. It is safe to run

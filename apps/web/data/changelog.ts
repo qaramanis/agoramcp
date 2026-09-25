@@ -29,6 +29,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.33",
+    title: "Make the database scripts ask before they drop anything, and run one at a time",
+    body: [
+      "`db:rollback` and `db:reset` ran the moment they were typed, against whatever `.env.local` named, and the one on the machine these were written on names production. They now list the migrations they would reverse and go on only when the database's name is typed back; a wrong name, or Ctrl+D, reverses nothing. `--force` skips the question, and without a terminal to ask in nothing is reversed without it. Every script run now opens with the database it reached, host and name, never the credentials.",
+      "Two runs against one database could interleave: two `db:migrate`s both finding the same migration pending, or both making the `migrations` table. Every migration and seed run now holds a Postgres advisory lock for as long as it runs, taken with `pg_try_advisory_lock` in `db/client.ts`, so the second is turned away at once with a message rather than left to fail half-way. The scripts' one session is no longer closed for being idle, so the lock survives a confirmation left waiting. Checked against a throwaway Postgres 17: two migrations started together end with one migrated and one refused. The README's Database section says how to run a `down` against a database of your own.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.32",
     title: "Add the first tests: 136, offline, in under four seconds",
     body: [
