@@ -158,9 +158,9 @@ function rejected(c: Context, deps: ToolDeps, error: InvalidInputError): Respons
 
 /**
  * One shape for every failure. An `AgoraError` supplies its own status and
- * code; anything else is a 500 that still carries the message, because
- * sources throw plain `Error`s for things a caller can fix — the MCP server
- * shows the model the same text.
+ * code; anything else is a bug, a 500 whose message is `toolErrorMessage`'s
+ * — that it was ours, and the request id to quote — as the MCP mounts show
+ * the model.
  *
  * `details` goes out only when the caller of this function passes it: the
  * validation issues this file builds, which name the fields of the request.
@@ -189,7 +189,7 @@ export function apiError(c: Context, error: unknown, details?: Record<string, un
   }
 
   return c.json(
-    { error: { code: "internal", message: toolErrorMessage(error), retryable: false } },
+    { error: { code: "internal", message: toolErrorMessage(error, c.get("requestId")), retryable: false } },
     500,
   );
 }

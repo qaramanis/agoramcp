@@ -90,7 +90,7 @@ function register(
       } catch (error) {
         // Tool-level errors belong in the result, not the JSON-RPC envelope:
         // the model should see them and be able to correct its arguments.
-        return { content: [{ type: "text", text: toolErrorMessage(error) }], isError: true };
+        return { content: [{ type: "text", text: toolErrorMessage(error, deps.requestId) }], isError: true };
       }
     },
   );

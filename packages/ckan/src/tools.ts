@@ -2,7 +2,7 @@ import { cacheKey, defineTool, InvalidInputError, withCache, type AnySourceTool,
 import { z } from "zod";
 import { createCkanClient, REGISTER_TTL_SECONDS, type CkanClient, type CkanPortal, type Licence } from "./client.ts";
 import { decode, fetchFile, readJson, readTable, sniff, MAX_FILE_BYTES } from "./files.ts";
-import { term } from "./vocab.ts";
+import { term, terms } from "./vocab.ts";
 
 /** The thirteen EU data themes, by code; the labels come from `vocab.ts`. */
 const THEMES = ["AGRI", "ECON", "EDUC", "ENER", "ENVI", "GOVE", "HEAL", "INTR", "JUST", "REGI", "SOCI", "TECH", "TRAN"] as const;
@@ -231,9 +231,9 @@ export function createCkanTools(options: CkanToolsOptions): { tools: AnySourceTo
         }
         if (input.facet === "format") return { value, datasets };
         // Themes, types and categories are indexed as the JSON list a record
-        // carries, so one value may name several terms.
-        const uris = value.startsWith("[") ? (JSON.parse(value) as string[]) : [value];
-        return { value, terms: uris.map(term), datasets };
+        // carries, so one value may name several terms — or be a list that
+        // does not parse, which is kept as the one value it looks like.
+        return { value, terms: terms(value), datasets };
       });
 
       return {

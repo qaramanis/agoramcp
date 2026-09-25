@@ -73,7 +73,10 @@ curl -G --data-urlencode 'ada=9ΓΓ346ΝΨ2Ν-Β5Τ' \
   server's log only with `LOG_TOOL_ARGS=true` (see [Logging](#logging)).
   Statuses: `invalid_input` 400, `not_found` 404, `rate_limited` 429,
   `upstream_error` 502, `upstream_unavailable` and `missing_credentials` 503,
-  `upstream_timeout` 504. Verbs other than GET and POST get a 405.
+  `upstream_timeout` 504, and `internal` 500 for a bug, whose message is
+  generic and quotes the request id. Verbs other than GET and POST get a 405
+  and a body over 64 KB a 413 (`payload_too_large`); the MCP mounts refuse the
+  same body with a JSON-RPC error.
 - `GET /{country}/api` lists the country's sources and where each tool answers;
   `GET /{country}/api/{source}` adds every tool's input schema and example.
 - Successful GETs carry `Cache-Control: max-age` equal to the tool's cache TTL.
@@ -224,7 +227,9 @@ The server writes one JSON object per line to stdout. Every line carries
 `time`, `level`, `message` (the event) and `service`; every line written while
 answering a request also carries `requestId`, the same value the caller gets
 back as `x-request-id`, so one request's lines can be pulled together in any
-log viewer. Lines from a call carry `transport` (`mcp` or `api`) and `mount`
+log viewer. A caller's own `x-request-id` is kept when it looks like an id (up
+to 128 letters, digits and `._:-`), so their logs and ours join up; anything
+else is replaced with a fresh UUID. Lines from a call carry `transport` (`mcp` or `api`) and `mount`
 (`gr` for the country server, `gr/vies` for a source's own), and `probe: true`
 when the status page's check made the call.
 

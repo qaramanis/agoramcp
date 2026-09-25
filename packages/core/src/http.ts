@@ -146,7 +146,14 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     async getJson<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       const response = await request(path, opts);
       const text = await response.text();
-      if (text.trim() === "") return undefined as T;
+      // Every caller reads the answer straight away, so an empty one is
+      // upstream's failure, not a TypeError two calls later.
+      if (text.trim() === "") {
+        throw new UpstreamError(`${new URL(response.url).host} answered with an empty body where JSON was expected.`, {
+          status: response.status,
+          details: { url: response.url },
+        });
+      }
       try {
         return JSON.parse(text) as T;
       } catch (cause) {

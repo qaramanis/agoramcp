@@ -29,6 +29,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.30",
+    title: "Fix six small failures in how the server answers and fails",
+    body: [
+      "Concurrent misses on one cache key share the first caller's load, which runs on that caller's abort signal, so a caller who hung up failed everyone waiting on it, and each of them was logged as an `internal` error. `withCache` now has a waiter whose shared load aborted load again as itself; a real failure is still shared, not retried.",
+      "Four caller mistakes were plain `Error`s and came back as 500s: a date range whose start is after its end, in Diavgeia and ΚΗΜΔΗΣ, and a `fromPage` past the end of a PDF, in both. They are `invalid_input` now, and ΚΗΜΔΗΣ's fallback for a record with no PDF is `not_found`, as its documentation already said. With every deliberate failure an `AgoraError`, anything else is a bug: `toolErrorMessage` answers it with a generic message quoting the request id, on the API and to the model alike, rather than with a message written for us.",
+      "`getJson` returned `undefined` for an empty body, which every caller then read a property of; it is an `upstream_error` now. `list_facets` on the CKAN portals parses a facet's JSON list through the guarded `terms` in `vocab.ts` instead of a bare `JSON.parse`.",
+      "The MCP mounts and the tool API refuse a body over 64 KB, with a JSON-RPC error or `payload_too_large` 413, counted by the stream when the request declares no length. A caller's `x-request-id` is kept only when it looks like an id (up to 128 letters, digits and `._:-`) and replaced otherwise, since it goes on every log line and into `tool_calls`. `/api`, the README and the two sources' error tables say so.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.29",
     title: "Stop sending a failure's internal details to API callers",
     body: [

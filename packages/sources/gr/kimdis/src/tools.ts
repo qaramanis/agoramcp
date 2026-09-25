@@ -1,4 +1,4 @@
-import { cacheKey, defineTool, withCache, type ToolContext } from "@agoramcp/core";
+import { cacheKey, defineTool, InvalidInputError, NotFoundError, withCache, type ToolContext } from "@agoramcp/core";
 import { z } from "zod";
 import {
   addDays,
@@ -130,7 +130,7 @@ type BaseInput = {
 /** Lexicographic comparison is exact for YYYY-MM-DD, which the schema has already enforced. */
 function assertOrdered(name: string, from: string | undefined, to: string | undefined): void {
   if (from && to && from > to) {
-    throw new Error(`${name}From (${from}) is after ${name}To (${to}).`);
+    throw new InvalidInputError(`${name}From (${from}) is after ${name}To (${to}).`);
   }
 }
 
@@ -396,7 +396,7 @@ export const getDocumentTextTool = defineTool({
     if (type === null || type === "award") {
       // Same wording as get_document, from the same place.
       await fetchDocument(adam, context.signal);
-      throw new Error(`No PDF can be read for "${adam}".`);
+      throw new NotFoundError(`No PDF can be read for "${adam}".`);
     }
 
     // The whole text is cached, so paging through a long act costs one fetch.
@@ -409,7 +409,7 @@ export const getDocumentTextTool = defineTool({
 
     const fromPage = input.fromPage ?? 1;
     if (fromPage > text.pageCount) {
-      throw new Error(`fromPage (${fromPage}) is past the last page: the PDF has ${text.pageCount}.`);
+      throw new InvalidInputError(`fromPage (${fromPage}) is past the last page: the PDF has ${text.pageCount}.`);
     }
 
     const pages: { page: number; text: string }[] = [];

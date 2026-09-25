@@ -97,9 +97,15 @@ export function isAgoraError(error: unknown): error is AgoraError {
   return error instanceof AgoraError;
 }
 
-/** Message safe to hand back to a model: never leaks a stack or a token. */
-export function toolErrorMessage(error: unknown): string {
+/**
+ * Message safe to hand back to a caller or a model. An `AgoraError`'s is
+ * written for them. Anything else is a bug, whose message was written for
+ * us — a property that was undefined, a parse that failed on upstream's
+ * bytes — so the caller hears that it was ours, and the request id to quote;
+ * the log line has the rest.
+ */
+export function toolErrorMessage(error: unknown, requestId?: string): string {
   if (isAgoraError(error)) return error.message;
-  if (error instanceof Error) return error.message;
-  return String(error);
+  const quote = requestId ? ` Quote request id ${requestId} when reporting it.` : "";
+  return `The server failed answering this call. It is not the arguments; asking again may not help.${quote}`;
 }

@@ -502,14 +502,14 @@ is a fresh question.
 
 | Situation | Code | Message |
 |---|---|---|
-| `submittedFrom` after `submittedTo` (likewise cancelled, deadline) | tool error | submittedFrom (…) is after submittedTo (…). |
+| `submittedFrom` after `submittedTo` (likewise cancelled, deadline) | `invalid_input` | submittedFrom (…) is after submittedTo (…). |
 | Malformed ΑΔΑΜ, uid, CPV or date | schema validation | rejected before the handler runs |
 | ΑΔΑΜ of an award decision | `not_found` | … is an award decision (AWRD). The open-data API serves requests, notices, contracts and payments, not awards … |
 | Unknown ΑΔΑΜ | `not_found` | No act is registered under ΑΔΑΜ "…". Check the code, or search for the act instead. |
 | Nothing matched | none | an empty page, `total: 0` |
 | No PDF, or not a PDF | `not_found` | No PDF is published for ΑΔΑΜ "…". |
 | PDF over 30 MB | `upstream_error` (413) | … too large to read here. It can be downloaded from … |
-| `fromPage` past the end | tool error | fromPage (…) is past the last page: the PDF has …. |
+| `fromPage` past the end | `invalid_input` | fromPage (…) is past the last page: the PDF has …. |
 | Three 15 s timeouts in a row | `upstream_timeout` | … did not respond within 15000ms. Ask again — the answer is usually ready by then. |
 | 429 | `rate_limited` | from the shared HTTP client |
 
