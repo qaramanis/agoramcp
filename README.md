@@ -229,7 +229,7 @@ when the status page's check made the call.
 | `tool.failed` | info · warn · error | The handler threw. `error` carries the `AgoraError`'s `code`, `status`, `retryable`, `details` and `cause`; a stack only when the error was not one a source throws on purpose. `warn` for an upstream that is down, rate-limiting or unconfigured; `info` for `not_found` and `invalid_input`, which are the caller's; `error` for anything unexpected. |
 | `tool.aborted` | info | The caller disconnected before the handler finished. |
 | `tool.rejected` | info | A call refused before any handler ran: on an MCP mount an unknown tool name or arguments the schema would not take, on the API a query or body that failed strict validation. `reason` is the message the caller was sent. |
-| `request.rejected` | warn | The MCP transport refused the request itself — the wrong `Accept` or `Content-Type`, a body that is not JSON — and its own 4xx was sent. |
+| `request.rejected` | warn | The MCP transport refused the request itself — the wrong `Accept` or `Content-Type`, a body that is not JSON — and its own 4xx was sent; or the body was a JSON-RPC batch, which is refused with a 400 before it reaches the transport (`batch` is how many messages it held). |
 | `mcp.protocol_error` | warn | The MCP SDK reported an error of its own, such as a reply it could not send. |
 | `record.failed` | warn | A call's outcome could not be written to the database (below). |
 | `tool.start` | debug | The handler is about to run, with the arguments. Off at the default level; its one use is to leave a trace of a call the host kills before the outcome line is written. |
