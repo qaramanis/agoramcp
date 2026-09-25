@@ -10,28 +10,46 @@ export interface Cache {
 interface Entry {
   value: unknown;
   expiresAt: number;
+  /** What `approximateBytes` made of `value` when it was set. */
+  bytes: number;
 }
 
 export interface MemoryCacheOptions {
   /** Oldest entries are evicted once the map grows past this. */
   maxEntries?: number;
+  /**
+   * Oldest entries are evicted once the values held add up to more than
+   * this, by `approximateBytes`. A count alone does not bound memory: one
+   * entry can be a 3 KB lookup or a whole 8 MB file.
+   */
+  maxBytes?: number;
 }
 
 /**
- * Single-process LRU with per-entry TTL. The Redis implementation lands in
- * step 5 behind this same interface — nothing above `Cache` should change.
+ * Single-process LRU with per-entry TTL, bounded by entry count and by size.
+ * The Redis implementation lands in step 5 behind this same interface —
+ * nothing above `Cache` should change.
  */
 export function createMemoryCache(options: MemoryCacheOptions = {}): Cache {
   const maxEntries = options.maxEntries ?? 5_000;
+  const maxBytes = options.maxBytes ?? 256 * 1024 * 1024;
   const store = new Map<string, Entry>();
+  let heldBytes = 0;
+
+  function remove(key: string): void {
+    const entry = store.get(key);
+    if (!entry) return;
+    heldBytes -= entry.bytes;
+    store.delete(key);
+  }
 
   function evictIfNeeded(): void {
-    while (store.size > maxEntries) {
+    while (store.size > maxEntries || heldBytes > maxBytes) {
       // Map iterates in insertion order, and `get` re-inserts, so the first
       // key is the least recently used.
       const oldest = store.keys().next();
       if (oldest.done) break;
-      store.delete(oldest.value);
+      remove(oldest.value);
     }
   }
 
@@ -40,7 +58,7 @@ export function createMemoryCache(options: MemoryCacheOptions = {}): Cache {
       const entry = store.get(key);
       if (!entry) return undefined;
       if (entry.expiresAt <= Date.now()) {
-        store.delete(key);
+        remove(key);
         return undefined;
       }
       // Refresh recency.
@@ -51,19 +69,71 @@ export function createMemoryCache(options: MemoryCacheOptions = {}): Cache {
 
     async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
       if (ttlSeconds <= 0) return;
-      store.delete(key);
-      store.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1_000 });
+      remove(key);
+      const bytes = approximateBytes(value);
+      // Held, it would evict everything else and still not fit.
+      if (bytes > maxBytes) return;
+      store.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1_000, bytes });
+      heldBytes += bytes;
       evictIfNeeded();
     },
 
     async delete(key: string): Promise<void> {
-      store.delete(key);
+      remove(key);
     },
 
     async clear(): Promise<void> {
       store.clear();
+      heldBytes = 0;
     },
   };
+}
+
+/**
+ * What holding a value costs, near enough to budget by: two bytes a
+ * character, which is what V8 spends on any string with Greek in it, the
+ * byte length of binary data, and a flat few bytes for everything else.
+ * Walked with a stack rather than recursion, and each object once, so a
+ * deep or shared structure costs no more to measure than to hold.
+ */
+function approximateBytes(value: unknown): number {
+  let total = 0;
+  const stack: unknown[] = [value];
+  const seen = new Set<object>();
+
+  while (stack.length > 0) {
+    const item = stack.pop();
+
+    if (typeof item === "string") {
+      total += item.length * 2;
+      continue;
+    }
+    if (item === null || typeof item !== "object") {
+      total += 8;
+      continue;
+    }
+    if (seen.has(item)) continue;
+    seen.add(item);
+
+    total += 16;
+    if (ArrayBuffer.isView(item)) {
+      total += item.byteLength;
+    } else if (Array.isArray(item)) {
+      // Not `push(...item)`: a register's worth of rows would overflow the call's argument limit.
+      for (const child of item) stack.push(child);
+    } else if (item instanceof Map) {
+      for (const [key, child] of item) stack.push(key, child);
+    } else if (item instanceof Set) {
+      for (const child of item) stack.push(child);
+    } else {
+      for (const [key, child] of Object.entries(item)) {
+        total += key.length * 2;
+        stack.push(child);
+      }
+    }
+  }
+
+  return total;
 }
 
 /**

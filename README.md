@@ -107,8 +107,8 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
      status history — see [Configuration](#configuration)) and any source
      tokens from `.env.example` as needed.
      `PORT` and `HOST` do not apply; Vercel owns the listener, and a
-     non-integer `PORT`, `RATE_LIMIT_PER_MINUTE` or `CACHE_MAX_ENTRIES` throws
-     at load.
+     non-integer `PORT`, `RATE_LIMIT_PER_MINUTE`, `CACHE_MAX_ENTRIES` or
+     `CACHE_MAX_MB` throws at load.
    - `web`: `NEXT_PUBLIC_MCP_BASE_URL` and `MCP_SERVER_URL`, both the server
      project's production URL. The first is inlined at build time, so redeploy
      `web` if that URL ever changes. Plus `DATABASE_URL` (Neon's pooled

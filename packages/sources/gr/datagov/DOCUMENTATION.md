@@ -330,7 +330,14 @@ Measured: the ΕΥΔΑΠ file (994 KB, comma-separated, UTF-8, Greek headers) �
 11,776 rows in 0.8 s; the Ναυπακτία schools file (3.5 KB, `;`-separated,
 BOM) → 31 rows. Refused with the URL: XLS/XLSX, PDF, ZIP, map services and
 images by format; HTML pages and unparseable bytes by content; anything over
-8 MB. Prefer `query_resource` where the resource is queryable.
+8 MB, counted as the body arrives (after decompression), so a server that
+sends no length or a small compressed body stops at the cap rather than
+filling memory. Prefer `query_resource` where the resource is queryable.
+
+The link is the publisher's, so it is fetched only if it is http or https and
+every address it resolves to is on the public internet — a record pointing at
+a private, loopback or link-local address, directly or through a redirect
+(up to five are followed), is refused without being fetched.
 
 ---
 
@@ -406,6 +413,7 @@ Keys are namespaced `gr/datagov:*`. TTLs live in `meta.ts`.
 | `read_resource` on a spreadsheet, archive, service or image | `invalid_input` | Resource … is XLS, which cannot be read here. It can be downloaded from … |
 | The publisher's server answers HTML | `invalid_input` | …answered with a web page, not a data file… The link is probably out of date. |
 | File over 8 MB, or 404 at the publisher | `upstream_error` (413) / `not_found` | …too large to read here… / The publisher's server has no file at … |
+| The file's link is not http(s), or it or a redirect points at a non-public address | `invalid_input` | The file at … is not fetched here: 10.0.0.5 is not a public internet address. |
 
 ---
 

@@ -1,4 +1,4 @@
-import { NotFoundError, UpstreamError } from "@agoramcp/core";
+import { InvalidInputError, NotFoundError, RefusedAddressError, UpstreamError, fetchUntrusted, readCapped } from "@agoramcp/core";
 
 /**
  * Reading the file behind a resource that is not in the datastore. This is
@@ -32,43 +32,57 @@ export interface JsonFile {
 
 export type ReadFile = TableFile | JsonFile;
 
+/**
+ * The file a resource links to. The link is the publisher's, not ours, so it
+ * is fetched only from the public internet — a record pointing at a private
+ * address, or at a page that redirects to one, is refused — and read no
+ * further than `MAX_FILE_BYTES`, however the server sends it.
+ */
 export async function fetchFile(url: string, signal: AbortSignal): Promise<{ bytes: Uint8Array; contentType: string | null }> {
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      headers: { "user-agent": "agoramcp/0.1 (+https://github.com/qaramanis/agoramcp; open government data proxy)", accept: "*/*" },
-      signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)]),
-      redirect: "follow",
-    });
-  } catch (cause) {
-    throw new UpstreamError(`The file could not be fetched from ${hostOf(url)}.`, { cause, status: 502, details: { url } });
-  }
+  const response = await open(url, signal);
 
   if (response.status === 404) {
+    await response.body?.cancel().catch(() => undefined);
     throw new NotFoundError(`The publisher's server has no file at ${url} (404).`, { details: { url } });
   }
   if (!response.ok) {
-    await response.arrayBuffer().catch(() => undefined);
+    await response.body?.cancel().catch(() => undefined);
     throw new UpstreamError(`${hostOf(url)} answered ${response.status} for the file.`, { status: 502, details: { url } });
   }
 
   const declared = Number(response.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_FILE_BYTES) {
-    await response.arrayBuffer().catch(() => undefined);
+    await response.body?.cancel().catch(() => undefined);
     throw tooLarge(url, declared);
   }
 
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.byteLength > MAX_FILE_BYTES) throw tooLarge(url, bytes.byteLength);
+  const bytes = await readCapped(response, MAX_FILE_BYTES);
+  if (!bytes) throw tooLarge(url);
 
   return { bytes, contentType: response.headers.get("content-type") };
 }
 
-function tooLarge(url: string, bytes: number): UpstreamError {
-  return new UpstreamError(
-    `The file is ${Math.round(bytes / 1_048_576)} MB — too large to read here. It can be downloaded from ${url}.`,
-    { status: 413, details: { url, bytes } },
-  );
+async function open(url: string, signal: AbortSignal) {
+  try {
+    return await fetchUntrusted(url, {
+      headers: { "user-agent": "agoramcp/0.1 (+https://github.com/qaramanis/agoramcp; open government data proxy)", accept: "*/*" },
+      signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)]),
+    });
+  } catch (cause) {
+    if (cause instanceof RefusedAddressError) {
+      throw new InvalidInputError(`The file at ${url} is not fetched here: ${cause.message}`, { details: { url } });
+    }
+    throw new UpstreamError(`The file could not be fetched from ${hostOf(url)}.`, { cause, status: 502, details: { url } });
+  }
+}
+
+/** `bytes` when the server declared them; a body cut off at the cap only says it was over. */
+function tooLarge(url: string, bytes?: number): UpstreamError {
+  const size = bytes === undefined ? `over ${MAX_FILE_BYTES / 1_048_576} MB` : `${Math.round(bytes / 1_048_576)} MB`;
+  return new UpstreamError(`The file is ${size} — too large to read here. It can be downloaded from ${url}.`, {
+    status: 413,
+    details: { url, ...(bytes === undefined ? {} : { bytes }) },
+  });
 }
 
 function hostOf(url: string): string {
