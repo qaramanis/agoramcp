@@ -113,7 +113,7 @@ export const privacy: LegalDocument = {
       ],
     },
   ],
-  updated: "2026-09-22",
+  updated: "2026-09-25",
 };
 
 export const terms: LegalDocument = {

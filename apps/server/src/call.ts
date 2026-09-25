@@ -42,7 +42,11 @@ export interface ToolDeps {
 export interface CallLogOptions {
   /** A successful call slower than this, in milliseconds, is logged as a warning. */
   slowToolMs: number;
-  /** Whether the validated arguments go on the line. */
+  /**
+   * Whether the validated arguments' values go on the line. Off, only their
+   * names do: the privacy page promises arguments are not logged, and a VAT
+   * number or a searched-for name is personal data.
+   */
   toolArgs: boolean;
 }
 
@@ -83,7 +87,7 @@ export async function callTool(
 ): Promise<unknown> {
   const key = sourceKey(source);
   const logger = deps.logger.child({ source: key, tool: tool.name });
-  const args = deps.log.toolArgs ? describeArgs(input) : {};
+  const args = deps.log.toolArgs ? describeArgs(input) : { argNames: Object.keys(input) };
   const cache = countingCache(deps.cache);
   const startedAt = Date.now();
 
@@ -139,7 +143,12 @@ export async function callTool(
 
     const code: ErrorCode = isAgoraError(error) ? error.code : "internal";
     const durationMs = finish(false, code);
-    logger[levelFor(code)]("tool.failed", { ...args, durationMs, cache: cache.counts(), error });
+    logger[levelFor(code)]("tool.failed", {
+      ...args,
+      durationMs,
+      cache: cache.counts(),
+      error: deps.log.toolArgs ? error : withoutArguments(error),
+    });
     throw error;
   }
 }
@@ -161,6 +170,18 @@ function levelFor(code: ErrorCode): "info" | "warn" | "error" {
     default:
       return "warn";
   }
+}
+
+/**
+ * A failure as the line may carry it while argument values are kept off it.
+ * An `AgoraError`'s message and details quote what it was asked — the ΑΔΑ
+ * that was not found, the upstream URL with the VAT number in its path — so
+ * only what kind of failure it was is kept. Anything else is a bug, where
+ * the message and stack are the point, and is left whole.
+ */
+function withoutArguments(error: unknown): unknown {
+  if (!isAgoraError(error)) return error;
+  return { name: error.name, code: error.code, status: error.status, retryable: error.retryable };
 }
 
 /**

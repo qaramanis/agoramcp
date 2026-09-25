@@ -1,6 +1,5 @@
 import type { Logger } from "@agoramcp/core";
 import type { MiddlewareHandler } from "hono";
-import { clientAddress } from "./client.ts";
 
 /**
  * What the JSON-RPC body of an MCP request said, for the request line. Every
@@ -44,7 +43,9 @@ export const PROBE_HEADER = "x-agoramcp-probe";
  * One structured line per request, plus an `x-request-id` the caller can quote
  * when reporting a problem. The line is written after the route has run, so
  * it carries what the route found out: the JSON-RPC method behind a POST to
- * a mount, and the source and tool behind a call.
+ * a mount, and the source and tool behind a call. It says what was asked,
+ * never who asked: no address and no user agent, as the privacy page
+ * promises.
  */
 export function requestLogger(logger: Logger): MiddlewareHandler {
   return async (c, next) => {
@@ -67,8 +68,6 @@ export function requestLogger(logger: Logger): MiddlewareHandler {
         path: c.req.path,
         status: c.res.status,
         durationMs: Date.now() - startedAt,
-        ip: clientAddress(c),
-        userAgent: c.req.header("user-agent"),
         probe: c.req.header(PROBE_HEADER) === undefined ? undefined : true,
         rpcMethod: rpc?.method,
         rpcId: rpc?.id,

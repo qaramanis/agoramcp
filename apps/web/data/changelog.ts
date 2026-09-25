@@ -29,6 +29,15 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.26",
+    title: "Keep addresses and argument values out of the server's logs",
+    body: [
+      "`/privacy` promises that the server logs what was asked, not who asked, and never the arguments. The code had drifted from that: every `request` line carried the caller's address and user agent, and `LOG_TOOL_ARGS` was on by default, so a VAT number or a name searched for in Diavgeia went into the log store with every call. The `request` line now carries neither the address nor the user agent; the address is still read, by the rate limiter alone, and held for its minute.",
+      "`LOG_TOOL_ARGS` now defaults to off, and the `tool.*` lines carry `argNames`, the names of the validated arguments, instead of their values. A failed call's line keeps the error's name, code, status and whether it is worth retrying, but not its message or details, which quote what was asked (the ΑΔΑ not found, the upstream URL with the VAT number in its path). An error no source throws on purpose keeps its message and stack. Setting `LOG_TOOL_ARGS=true` brings the values and the full error back for debugging. The README and `.env.example` say so, and the privacy page moves its date.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.25",
     title: "Refuse JSON-RPC batches on the MCP endpoints",
     body: [
