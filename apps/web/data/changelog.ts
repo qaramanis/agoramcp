@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.31",
+    title: "Send security headers from every page of the site",
+    body: [
+      "The site sent HSTS, which Vercel adds, and `X-Powered-By`, and nothing else. `next.config.ts` now sends a Content Security Policy on every response that names no origin but the site's own, because everything it loads is its own: fonts self-hosted by `next/font`, images from `public/`, Vercel Web Analytics from `/_vercel/insights`, and the /live console's calls to `/api/mcp`. Plugins, `<base>`, forms posting elsewhere and framing are refused, the last also by `X-Frame-Options: DENY` for older browsers.",
+      "Inline scripts and styles are allowed. The App Router streams its payload in inline scripts, and the other way, a nonce per request, would render every page on demand, including the eight that are prerendered now; the site renders no one else's HTML, so an injected inline script is the one thing given up. Development adds `'unsafe-eval'` for React's dev build and the analytics debug script from Vercel's CDN.",
+      "Alongside it: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that turns off the camera, microphone, location, payments, USB and topics, and `Cross-Origin-Opener-Policy: same-origin`. `poweredByHeader: false` drops `X-Powered-By`. Every route was loaded in Chrome under the policy, in the production build and in development, with no violation: the WebGL eclipse and starfield draw, the fonts load, and the console answers.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.30",
     title: "Fix six small failures in how the server answers and fails",
     body: [
