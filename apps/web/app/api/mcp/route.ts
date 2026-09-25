@@ -1,6 +1,7 @@
 import { loadCatalogue } from "@/data/catalogue";
 import { MCP_SERVER_URL } from "@/data/registry";
 import { buildArguments, providerByEndpoint } from "@/data/playground";
+import { proxyHeaders } from "@/db/requester";
 
 /**
  * Server-side proxy for the live playground.
@@ -83,6 +84,8 @@ export async function POST(request: Request) {
         "content-type": "application/json",
         // The transport rejects a POST that will not accept both.
         accept: "application/json, text/event-stream",
+        // Otherwise every visitor would share this app's one rate-limit budget.
+        ...(await proxyHeaders()),
       },
       body,
       signal: AbortSignal.timeout(TIMEOUT_MS),

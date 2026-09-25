@@ -1,6 +1,7 @@
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { NotFoundError, createLogger, createMemoryCache } from "@agoramcp/core";
 import { Hono, type Context } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -9,6 +10,7 @@ import type { ToolDeps, Transport } from "./call.ts";
 import { loadConfig } from "./config.ts";
 import { createBundleServer, createSourceServer, SERVER_VERSION, type CallTrace } from "./mcp.ts";
 import { PROBE_HEADER, requestLogger, type CallSummary } from "./middleware/logging.ts";
+import { createIdentify } from "./middleware/client.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
 import { createCallRecorder } from "./record.ts";
 import {
@@ -65,7 +67,9 @@ app.get("/", (c) =>
   }),
 );
 
-const limiter = createRateLimiter(config.rateLimitPerMinute);
+const identify = createIdentify({ salt: config.requestHashSalt, proxySecret: config.proxySecret });
+
+const limiter = createRateLimiter(config.rateLimitPerMinute, identify);
 if (limiter) {
   // Both mounts, or the country server would ship without a limit.
   app.use("/:country/mcp", limiter);
@@ -74,7 +78,7 @@ if (limiter) {
 
 // The API's budget stops at the source, like the MCP mounts', so a script
 // gets one allowance per registry rather than one per tool it happens to use.
-const apiLimiter = createRateLimiter(config.rateLimitPerMinute, {
+const apiLimiter = createRateLimiter(config.rateLimitPerMinute, identify, {
   scope: (c) => apiPath(c.req.param("country") ?? "", c.req.param("source") ?? ""),
   message: {
     error: {
@@ -87,6 +91,28 @@ const apiLimiter = createRateLimiter(config.rateLimitPerMinute, {
 if (apiLimiter) {
   app.use("/:country/api/:source/:tool", apiLimiter);
 }
+
+/**
+ * A tool call is a name and a handful of arguments, and the /live proxy
+ * already refuses one over 8 KB. Past this the body is refused before
+ * anything reads it — after the rate limiter, so a refused one still counts.
+ */
+const MAX_BODY_BYTES = 64 * 1024;
+const TOO_LARGE = `The request body is over ${MAX_BODY_BYTES / 1024} KB. A tool call is a name and its arguments.`;
+
+const mcpBodyLimit = bodyLimit({
+  maxSize: MAX_BODY_BYTES,
+  onError: (c) => c.json({ jsonrpc: "2.0", error: { code: -32600, message: TOO_LARGE }, id: null }, 413),
+});
+app.use("/:country/mcp", mcpBodyLimit);
+app.use("/:country/mcp/:source", mcpBodyLimit);
+app.use(
+  "/:country/api/:source/:tool",
+  bodyLimit({
+    maxSize: MAX_BODY_BYTES,
+    onError: (c) => c.json({ error: { code: "payload_too_large", message: TOO_LARGE, retryable: false } }, 413),
+  }),
+);
 
 app.all("/:country/mcp/:source", async (c) => {
   const key = `${c.req.param("country")}/${c.req.param("source")}`;

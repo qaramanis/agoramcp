@@ -21,6 +21,15 @@ export type {
   RequestOptions,
 } from "./http.ts";
 
+export {
+  PROXY_HEADER,
+  REQUESTER_HEADER,
+  REQUESTER_ID,
+  requesterId,
+  requesterKey,
+  secretMatches,
+} from "./requester.ts";
+
 export { RefusedAddressError, fetchUntrusted, isPublicAddress } from "./untrusted.ts";
 export type { UntrustedRequestInit } from "./untrusted.ts";
 

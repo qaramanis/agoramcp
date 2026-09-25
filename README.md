@@ -30,7 +30,19 @@ pnpm install
 pnpm dev            # MCP server on :3000
 pnpm dev:web        # landing page on :3001
 pnpm typecheck
+pnpm test           # every *.test.ts, offline, in a few seconds
 ```
+
+Tests sit beside the code they cover as `*.test.ts` and run on Node's own
+runner (`node:test`) under `tsx`, the way the server does, so there is nothing
+to build and no framework to learn. They never reach a registry: an HTTP client
+is tested against a server started in the test, and `apps/server/src/app.test.ts`
+drives the whole app through `app.fetch` in memory. The first set covers what
+fails worst when it breaks: the address guard and byte caps in `packages/core`,
+the cache, the requester id, the parsers and query builders that turn caller
+input into upstream queries, and the server's limits and error shapes, including
+that no argument reaches a log line unless `LOG_TOOL_ARGS` is on. A new source
+brings tests for its parsers and query builders with it.
 
 Verify a source with the official inspector:
 
@@ -67,10 +79,16 @@ curl -G --data-urlencode 'ada=9ΓΓ346ΝΨ2Ν-Β5Τ' \
   stateless request has to carry the attribution every time; an MCP session is
   told once.
 - Errors are `{ "error": { "code", "message", "retryable", "details"? } }` with
-  the `AgoraError`'s own HTTP status: `invalid_input` 400, `not_found` 404,
-  `rate_limited` 429, `upstream_error` 502, `upstream_unavailable` and
-  `missing_credentials` 503, `upstream_timeout` 504. Verbs other than GET and
-  POST get a 405.
+  the `AgoraError`'s own HTTP status. `details` comes only with a 400 the
+  request's own validation refused, as `issues` naming each field; what a
+  handler knew about a failure upstream is never sent, and reaches the
+  server's log only with `LOG_TOOL_ARGS=true` (see [Logging](#logging)).
+  Statuses: `invalid_input` 400, `not_found` 404, `rate_limited` 429,
+  `upstream_error` 502, `upstream_unavailable` and `missing_credentials` 503,
+  `upstream_timeout` 504, and `internal` 500 for a bug, whose message is
+  generic and quotes the request id. Verbs other than GET and POST get a 405
+  and a body over 64 KB a 413 (`payload_too_large`); the MCP mounts refuse the
+  same body with a JSON-RPC error.
 - `GET /{country}/api` lists the country's sources and where each tool answers;
   `GET /{country}/api/{source}` adds every tool's input schema and example.
 - Successful GETs carry `Cache-Control: max-age` equal to the tool's cache TTL.
@@ -104,8 +122,10 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
 3. **Variables.**
    - `server`: `VERCEL_EXPERIMENTAL_BACKENDS=1` (required, see step 2), then
      `CORS_ORIGINS`, `DATABASE_URL` (the web project's pooled string, for the
-     status history — see [Configuration](#configuration)) and any source
-     tokens from `.env.example` as needed.
+     status history — see [Configuration](#configuration)),
+     `REQUEST_HASH_SALT` and `PROXY_SECRET`, both the web project's values
+     (see [Requesters](#requesters)), and any source tokens from
+     `.env.example` as needed.
      `PORT` and `HOST` do not apply; Vercel owns the listener, and a
      non-integer `PORT`, `RATE_LIMIT_PER_MINUTE`, `CACHE_MAX_ENTRIES` or
      `CACHE_MAX_MB` throws at load.
@@ -113,7 +133,8 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
      project's production URL. The first is inlined at build time, so redeploy
      `web` if that URL ever changes. Plus `DATABASE_URL` (Neon's pooled
      string) and `REQUEST_HASH_SALT` for `/country` — see [Database](#database) —
-     and `CRON_SECRET` for the status cron.
+     `PROXY_SECRET` for the `/live` proxy, and `CRON_SECRET` for the status
+     cron.
 
 One dev dependency exists for Vercel's sake: `apps/server` lists `undici-types`
 because Vercel type-checks the entry with a resolver that does not follow
@@ -218,7 +239,9 @@ The server writes one JSON object per line to stdout. Every line carries
 `time`, `level`, `message` (the event) and `service`; every line written while
 answering a request also carries `requestId`, the same value the caller gets
 back as `x-request-id`, so one request's lines can be pulled together in any
-log viewer. Lines from a call carry `transport` (`mcp` or `api`) and `mount`
+log viewer. A caller's own `x-request-id` is kept when it looks like an id (up
+to 128 letters, digits and `._:-`), so their logs and ours join up; anything
+else is replaced with a fresh UUID. Lines from a call carry `transport` (`mcp` or `api`) and `mount`
 (`gr` for the country server, `gr/vies` for a source's own), and `probe: true`
 when the status page's check made the call.
 
@@ -241,6 +264,25 @@ carry the names of the validated arguments, `argNames`, and not their values:
 is personal data for a sole trader. `LOG_TOOL_ARGS=true` puts the values on as
 `args`, cut to a preview past 2 KB, for debugging; switch it off again after,
 because while it is on the privacy page is not true.
+
+### Requesters
+
+A requester is whoever is asking, without an account: `requesterId` in
+`packages/core/src/requester.ts`, an HMAC-SHA256 of the client's address keyed
+by `REQUEST_HASH_SALT`, IPv6 by its /64 and never the user agent, which a caller
+sets itself. It is the one definition of a person across the system: the web
+app files a `/country` request under it (importing the file as
+`@agoramcp/core/requester`) and the server's rate limiter counts under it, so
+one person has one budget per source whether they call the HTTP API, an MCP
+mount or the `/live` playground.
+
+The playground reaches the server from the web app's own address, so its proxy
+names the visitor in `x-agoramcp-requester` and proves it is the web app with
+`x-agoramcp-proxy: $PROXY_SECRET`. The server believes the first only beside the
+second; from anyone else it is ignored, so a script cannot name a fresh
+requester per call. With `REQUEST_HASH_SALT` unset on the server, the limiter
+keys on the raw address; with `PROXY_SECRET` unset on either app, every
+playground call counts against the web app.
 
 ### Call records and the status history
 

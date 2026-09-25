@@ -115,15 +115,16 @@ export const ERROR_RESPONSE = `{
 
 /**
  * Every `code` the API sends and the status it comes with. The vocabulary is
- * `packages/core/src/errors.ts`; the 405 is the API's own, for verbs other
- * than GET and POST.
+ * `packages/core/src/errors.ts`; the 405 and the 413 are the API's own, for
+ * verbs other than GET and POST and for a body over 64 KB.
  */
 export const ERROR_CODES: { code: string; status: number; meaning: string }[] = [
   { code: "invalid_input", status: 400, meaning: "an argument is missing, malformed, or not one the tool declares" },
   { code: "not_found", status: 404, meaning: "no such source, tool or record" },
   { code: "method_not_allowed", status: 405, meaning: "only GET and POST" },
+  { code: "payload_too_large", status: 413, meaning: "the body is over 64 KB; a tool call is a name and its arguments" },
   { code: "rate_limited", status: 429, meaning: "over the per-source budget for this minute" },
-  { code: "internal", status: 500, meaning: "something else; the message says what" },
+  { code: "internal", status: 500, meaning: "a failure on our side; quote the request id it gives" },
   { code: "upstream_error", status: 502, meaning: "the registry answered with something unusable" },
   { code: "upstream_unavailable", status: 503, meaning: "the registry is down; try again" },
   { code: "missing_credentials", status: 503, meaning: "this deployment lacks a token the source needs" },

@@ -40,6 +40,14 @@ declare module "hono" {
 export const PROBE_HEADER = "x-agoramcp-probe";
 
 /**
+ * A caller's own `x-request-id` is kept when it looks like an id — a UUID, a
+ * trace id, `fra1::abc-123` — so their logs and ours join up. Anything
+ * longer or stranger is replaced: it goes on every line and into the
+ * `tool_calls` table, and is no place for a paragraph.
+ */
+const REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
+
+/**
  * One structured line per request, plus an `x-request-id` the caller can quote
  * when reporting a problem. The line is written after the route has run, so
  * it carries what the route found out: the JSON-RPC method behind a POST to
@@ -49,7 +57,8 @@ export const PROBE_HEADER = "x-agoramcp-probe";
  */
 export function requestLogger(logger: Logger): MiddlewareHandler {
   return async (c, next) => {
-    const requestId = c.req.header("x-request-id") ?? crypto.randomUUID();
+    const given = c.req.header("x-request-id");
+    const requestId = given !== undefined && REQUEST_ID.test(given) ? given : crypto.randomUUID();
     const startedAt = Date.now();
 
     c.set("requestId", requestId);

@@ -1,4 +1,4 @@
-import { cacheKey, defineTool, isAgoraError, NotFoundError, withCache, type ToolContext } from "@agoramcp/core";
+import { cacheKey, defineTool, InvalidInputError, isAgoraError, NotFoundError, withCache, type ToolContext } from "@agoramcp/core";
 import { z } from "zod";
 import {
   addDays,
@@ -72,7 +72,7 @@ const size = z
 /** Lexicographic comparison is exact for YYYY-MM-DD, which the schema has already enforced. */
 function assertOrdered(name: string, from: string | undefined, to: string | undefined): void {
   if (from && to && from > to) {
-    throw new Error(`${name}From (${from}) is after ${name}To (${to}).`);
+    throw new InvalidInputError(`${name}From (${from}) is after ${name}To (${to}).`);
   }
 }
 
@@ -403,7 +403,7 @@ export const getDecisionTextTool = defineTool({
 
     const fromPage = input.fromPage ?? 1;
     if (fromPage > text.pageCount) {
-      throw new Error(`fromPage (${fromPage}) is past the last page: the PDF has ${text.pageCount}.`);
+      throw new InvalidInputError(`fromPage (${fromPage}) is past the last page: the PDF has ${text.pageCount}.`);
     }
 
     const pages: { page: number; text: string }[] = [];

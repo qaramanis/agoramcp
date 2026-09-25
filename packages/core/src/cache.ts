@@ -160,6 +160,11 @@ const inFlight = new Map<string, Promise<unknown>>();
 /**
  * Read-through cache. Concurrent misses on the same key share one upstream
  * call, so a burst of identical questions doesn't become a burst of requests.
+ *
+ * The shared call is the first caller's `load`, run on that caller's abort
+ * signal. If that caller leaves, the load dies with it — which says nothing
+ * about anyone waiting on it — so a waiter that sees it abort loads again,
+ * as itself.
  */
 export async function withCache<T>(
   cache: Cache,
@@ -171,7 +176,14 @@ export async function withCache<T>(
   if (hit !== undefined) return hit;
 
   const pending = inFlight.get(key);
-  if (pending) return (await pending) as T;
+  if (pending) {
+    try {
+      return (await pending) as T;
+    } catch (error) {
+      if (isAbort(error)) return withCache(cache, key, ttlSeconds, load);
+      throw error;
+    }
+  }
 
   const promise = (async () => {
     const value = await load();
@@ -185,4 +197,9 @@ export async function withCache<T>(
   } finally {
     inFlight.delete(key);
   }
+}
+
+/** How `fetch`, `node:http` and a timer each report an aborted signal. */
+function isAbort(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }

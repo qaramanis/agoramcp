@@ -1751,14 +1751,14 @@ faults, so the model sees the message and can correct its own arguments.
 | Malformed Lucene query | `invalid_input` | `Διαύγεια rejected the query: Syntax error at input position (line 1, pos N): …` — not retried |
 | PDF over 30 MB | `upstream_error` (413) | `The PDF for ΑΔΑ "…" is N MB — too large to read here. It can be downloaded from …` |
 | No PDF behind a known ΑΔΑ | `not_found` | `No PDF is published for ΑΔΑ "…".` |
-| `fromPage` past the last page | handler | `fromPage (30) is past the last page: the PDF has 19.` |
+| `fromPage` past the last page | `invalid_input` | `fromPage (30) is past the last page: the PDF has 19.` |
 | Scanned PDF, no text layer | *(not an error)* | Empty pages and a `note` saying so |
 | Non-numeric uid | schema | Rejected before any request is made |
 | `query` under 2 chars | schema | `Too small: expected string to have >=2 characters` |
 | No organization or dictionary matches | *(not an error)* | `total: 0` and an empty list |
 | Malformed ΑΔΑ | schema | Rejected before any request is made |
 | Bad date format | schema | `Use YYYY-MM-DD.` |
-| `issuedFrom` > `issuedTo`, `publishedFrom` > `publishedTo` | handler | `issuedFrom (…) is after issuedTo (…).` |
+| `issuedFrom` > `issuedTo`, `publishedFrom` > `publishedTo` | `invalid_input` | `issuedFrom (…) is after issuedTo (…).` |
 | `size` > 100 | schema | `Too big: expected number to be <=100` |
 | Upstream 5xx | `upstream_error` | Retried twice with jittered backoff first |
 | Upstream slow | `upstream_timeout` | 20 s per attempt; 60 s for the register and the dictionaries |

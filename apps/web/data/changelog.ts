@@ -29,6 +29,56 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.32",
+    title: "Add the first tests: 136, offline, in under four seconds",
+    body: [
+      "There were none. `pnpm test` now runs every `*.test.ts` in the workspace on Node's own test runner under `tsx`, the way the server runs, so there is no build and no framework: `tsx` joins the root's dev dependencies and nothing else is added. Tests sit beside the code they cover, and none reaches a registry. HTTP clients are tested against a server the test starts, and `apps/server/src/app.test.ts` drives the whole app through `app.fetch` in memory.",
+      "`packages/core` is covered where it guards: `fetchUntrusted` refusing loopback, private and metadata addresses in every spelling while its trap server counts zero requests, `readCapped` stopping at the cap without pulling the rest, the HTTP client's retries, timeouts and error mapping, the cache's size budget, LRU order and TTL, `withCache` sharing a load and recovering from a starter's abort, and the requester id. `packages/ckan` gets its CSV and JSON readers and a fake CKAN that checks every Solr filter value is quoted and escaped; VIES its ΑΦΜ check digit and number forms; Diavgeia its Lucene query builder and calendar arithmetic; NOA its time windows and catalogue parser.",
+      "The server's tests pin down this week's fixes: JSON-RPC batches refused, bodies over 64 KB refused on both doors, a handler's details kept from API callers, the rate limit per requester and per source with the /live proxy's visitor sharing the budget they spent directly and a forged requester ignored, request ids kept or replaced, and no argument on a log line unless `LOG_TOOL_ARGS` is on. Undoing four of those fixes one at a time fails the suite each time. The README says how the tests are laid out.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.31",
+    title: "Send security headers from every page of the site",
+    body: [
+      "The site sent HSTS, which Vercel adds, and `X-Powered-By`, and nothing else. `next.config.ts` now sends a Content Security Policy on every response that names no origin but the site's own, because everything it loads is its own: fonts self-hosted by `next/font`, images from `public/`, Vercel Web Analytics from `/_vercel/insights`, and the /live console's calls to `/api/mcp`. Plugins, `<base>`, forms posting elsewhere and framing are refused, the last also by `X-Frame-Options: DENY` for older browsers.",
+      "Inline scripts and styles are allowed. The App Router streams its payload in inline scripts, and the other way, a nonce per request, would render every page on demand, including the eight that are prerendered now; the site renders no one else's HTML, so an injected inline script is the one thing given up. Development adds `'unsafe-eval'` for React's dev build and the analytics debug script from Vercel's CDN.",
+      "Alongside it: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that turns off the camera, microphone, location, payments, USB and topics, and `Cross-Origin-Opener-Policy: same-origin`. `poweredByHeader: false` drops `X-Powered-By`. Every route was loaded in Chrome under the policy, in the production build and in development, with no violation: the WebGL eclipse and starfield draw, the fonts load, and the console answers.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.30",
+    title: "Fix six small failures in how the server answers and fails",
+    body: [
+      "Concurrent misses on one cache key share the first caller's load, which runs on that caller's abort signal, so a caller who hung up failed everyone waiting on it, and each of them was logged as an `internal` error. `withCache` now has a waiter whose shared load aborted load again as itself; a real failure is still shared, not retried.",
+      "Four caller mistakes were plain `Error`s and came back as 500s: a date range whose start is after its end, in Diavgeia and ΚΗΜΔΗΣ, and a `fromPage` past the end of a PDF, in both. They are `invalid_input` now, and ΚΗΜΔΗΣ's fallback for a record with no PDF is `not_found`, as its documentation already said. With every deliberate failure an `AgoraError`, anything else is a bug: `toolErrorMessage` answers it with a generic message quoting the request id, on the API and to the model alike, rather than with a message written for us.",
+      "`getJson` returned `undefined` for an empty body, which every caller then read a property of; it is an `upstream_error` now. `list_facets` on the CKAN portals parses a facet's JSON list through the guarded `terms` in `vocab.ts` instead of a bare `JSON.parse`.",
+      "The MCP mounts and the tool API refuse a body over 64 KB, with a JSON-RPC error or `payload_too_large` 413, counted by the stream when the request declares no length. A caller's `x-request-id` is kept only when it looks like an id (up to 128 letters, digits and `._:-`) and replaced otherwise, since it goes on every log line and into `tool_calls`. `/api`, the README and the two sources' error tables say so.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.29",
+    title: "Stop sending a failure's internal details to API callers",
+    body: [
+      "An HTTP API error carried the `AgoraError`'s `details` verbatim, and a handler's details are written for the log: the full upstream URL, the first 500 bytes of the upstream's raw reply, the query as it was built, data.gov.gr's Solr error with the parameters it ran. Nothing secret went out, since no source uses a key yet, but the day one puts a token in a URL it would have gone out on the first failure. The MCP mounts never sent them.",
+      "`apiError` in `apps/server/src/api.ts` now sends `details` only when it is handed them, which is only for a 400 the request's own validation refused: `issues`, naming each field, as the example on `/api` has always shown. Every other failure is its code, message and whether to retry. The README's HTTP API section says so.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.28",
+    title: "Identify a requester the same way on the site and the server",
+    body: [
+      "`requesterId` in `packages/core/src/requester.ts` is now the one definition of who is asking: an HMAC-SHA256 of the client's address keyed by `REQUEST_HASH_SALT`, an IPv6 address by its /64 (a household picks addresses inside it at will) and an IPv4-mapped one as its IPv4. The user agent is no longer part of it, since a caller sets that header itself and a new one made a new person. The web app imports the file as `@agoramcp/core/requester`, its first workspace dependency, compiled through `transpilePackages`.",
+      "The `/country` form files requests under it, so changing browser no longer buys a second vote. Hashes filed before this change were made the old way and no longer match, so each earlier requester can ask for each country once more. The server's rate limiter counts under it too, given the same salt, instead of the raw address.",
+      "The `/live` proxy reaches the server from the site's own address, which put every visitor on one budget, and made the site a way around a spent one. It now sends the visitor's id in `x-agoramcp-requester`, with `x-agoramcp-proxy` carrying `PROXY_SECRET` to prove it is the site; the server believes the id only beside the secret, compared in constant time. One person now has one budget per source across the API, the MCP mounts and the playground. `/privacy` says the hash is of the address alone and that the rate limit counts it, and the README gains a Requesters section and the two variables for each project.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.27",
     title: "Add the mobile navigation menu",
     body: [

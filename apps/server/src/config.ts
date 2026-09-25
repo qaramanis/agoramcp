@@ -10,6 +10,14 @@ export interface Config {
   logToolArgs: boolean;
   /** Where call outcomes are recorded for the status history. Unset: nowhere. */
   databaseUrl: string | undefined;
+  /**
+   * The key `requesterId` hashes addresses with — the web app's value, so a
+   * person is one requester on both. Unset, the rate limiter keys on the
+   * address itself.
+   */
+  requestHashSalt: string | undefined;
+  /** What the web app's /live proxy presents to be trusted with its visitor's id. Unset, no one is. */
+  proxySecret: string | undefined;
   /** `"*"` or an explicit allow-list of origins. */
   corsOrigins: "*" | string[];
   /** Requests per minute per client, per source. 0 disables the limiter. */
@@ -29,6 +37,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     slowToolMs: intFromEnv(env.LOG_SLOW_TOOL_MS, 10_000),
     logToolArgs: boolFromEnv(env.LOG_TOOL_ARGS, false),
     databaseUrl: env.DATABASE_URL?.trim() || undefined,
+    requestHashSalt: env.REQUEST_HASH_SALT?.trim() || undefined,
+    proxySecret: env.PROXY_SECRET?.trim() || undefined,
     corsOrigins:
       origins === "*"
         ? "*"
