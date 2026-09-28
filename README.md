@@ -83,6 +83,9 @@ curl -G --data-urlencode 'ada=9ΓΓ346ΝΨ2Ν-Β5Τ' \
   request's own validation refused, as `issues` naming each field; what a
   handler knew about a failure upstream is never sent, and reaches the
   server's log only with `LOG_TOOL_ARGS=true` (see [Logging](#logging)).
+  A call still running after `TOOL_TIMEOUT_MS` (60 s by default, about where
+  MCP clients give up) is stopped, upstream requests and PDF reading with it,
+  and answered as `upstream_timeout`, retryable, on both doors.
   Statuses: `invalid_input` 400, `not_found` 404, `rate_limited` 429,
   `upstream_error` 502, `upstream_unavailable` and `missing_credentials` 503,
   `upstream_timeout` 504, and `internal` 500 for a bug, whose message is
@@ -127,8 +130,8 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
      (see [Requesters](#requesters)), and any source tokens from
      `.env.example` as needed.
      `PORT` and `HOST` do not apply; Vercel owns the listener, and a
-     non-integer `PORT`, `RATE_LIMIT_PER_MINUTE`, `CACHE_MAX_ENTRIES` or
-     `CACHE_MAX_MB` throws at load.
+     non-integer `PORT`, `RATE_LIMIT_PER_MINUTE`, `CACHE_MAX_ENTRIES`,
+     `CACHE_MAX_MB` or `TOOL_TIMEOUT_MS` throws at load.
    - `web`: `NEXT_PUBLIC_MCP_BASE_URL` and `MCP_SERVER_URL`, both the server
      project's production URL. The first is inlined at build time, so redeploy
      `web` if that URL ever changes. Plus `DATABASE_URL` (Neon's pooled
@@ -172,9 +175,9 @@ migrations are the schema.
 
 ```bash
 pnpm --filter @agoramcp/web db:migrate              # run what is pending, as one batch
-pnpm --filter @agoramcp/web db:rollback             # reverse the last batch
+pnpm --filter @agoramcp/web db:rollback             # reverse the last batch, after asking
 pnpm --filter @agoramcp/web db:rollback --step=1    # or the last N migrations
-pnpm --filter @agoramcp/web db:reset                # reverse everything
+pnpm --filter @agoramcp/web db:reset                # reverse everything, after asking
 pnpm --filter @agoramcp/web db:status               # what has run, what has not
 pnpm --filter @agoramcp/web db:make add_x_to_y      # scaffold a new migration
 pnpm --filter @agoramcp/web db:seed                 # every seeder; `db:seed countries` for one
@@ -184,6 +187,18 @@ Each migration runs in a transaction with its own bookkeeping row, so one that
 fails leaves nothing behind. The scripts read `apps/web/.env.local` and use
 `DATABASE_URL_UNPOOLED` where it is set — a DDL transaction has to stay on one
 server session, which Neon's pooler does not promise.
+
+Every run starts by naming the database it reached (`Database     host/name`)
+and holds a Postgres advisory lock for as long as it runs, so a second
+migration or seed against the same database is turned away rather than
+interleaved. `db:rollback` and `db:reset` then list the migrations they would
+reverse and go on only when the database's name is typed back: a `down` drops
+its table and every row in it, and `.env.local` points wherever it points —
+production, if it was copied from the Vercel project. `--force` skips the
+question (`db:reset --force`); without a terminal to ask in, nothing is
+reversed without it. To try a migration's `down`, point both URLs at a
+database of your own first — a Neon branch, or any local Postgres — since the
+file fills in whichever one the environment leaves unset.
 
 `db:seed countries` loads the full ISO 3166-1 list from `apps/web/data/countries.ts`
 and marks the countries with a source mounted as supported. It is safe to run

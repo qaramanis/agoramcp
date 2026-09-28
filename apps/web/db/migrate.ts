@@ -1,7 +1,8 @@
 import { readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createInterface } from "node:readline/promises";
 import { pathToFileURL } from "node:url";
-import { connectForScripts, type Client, type Sql } from "./client";
+import { connectForScripts, lockForScript, scriptDatabase, type Client, type Sql } from "./client";
 import { loadLocalEnv } from "./env";
 
 /**
@@ -13,11 +14,17 @@ import { loadLocalEnv } from "./env";
  * Each migration runs inside a transaction with its own bookkeeping, so one
  * that fails leaves nothing behind — not even its row.
  *
- *   pnpm db:migrate              run pending migrations
- *   pnpm db:rollback [--step=N]  reverse the last batch, or the last N
- *   pnpm db:reset                reverse everything
- *   pnpm db:status               what has run and what has not
- *   pnpm db:make <name>          scaffold a new migration file
+ * Every run names the database it reached and holds a lock on it, so two
+ * runs cannot interleave. `rollback` and `reset` list what they will take
+ * down and wait for the database's name to be typed back: `.env.local`
+ * points wherever it points, which on the machine these were written on is
+ * production. `--force` skips the question.
+ *
+ *   pnpm db:migrate                      run pending migrations
+ *   pnpm db:rollback [--step=N] [--force] reverse the last batch, or the last N
+ *   pnpm db:reset [--force]              reverse everything
+ *   pnpm db:status                       what has run and what has not
+ *   pnpm db:make <name>                  scaffold a new migration file
  */
 
 const MIGRATIONS_DIR = resolve(import.meta.dirname, "migrations");
@@ -42,8 +49,13 @@ async function main(argv: string[]): Promise<void> {
   }
 
   loadLocalEnv();
+  const database = scriptDatabase();
+  const force = rest.includes("--force");
+  console.log(`Database     ${database}`);
+
   const sql = connectForScripts();
   try {
+    await lockForScript(sql);
     await ensureTable(sql);
 
     switch (command) {
@@ -51,10 +63,10 @@ async function main(argv: string[]): Promise<void> {
         await migrate(sql);
         break;
       case "rollback":
-        await rollback(sql, stepOption(rest));
+        await rollback(sql, stepOption(rest), database, force);
         break;
       case "reset":
-        await reset(sql);
+        await reset(sql, database, force);
         break;
       case "status":
         await status(sql);
@@ -103,7 +115,7 @@ async function migrate(sql: Client): Promise<void> {
 }
 
 /** The last batch, or with `--step=N` the last N migrations whatever their batch. */
-async function rollback(sql: Client, step: number | undefined): Promise<void> {
+async function rollback(sql: Client, step: number | undefined, database: string, force: boolean): Promise<void> {
   const ran = await ranMigrations(sql);
   const last = ran.at(-1);
   if (!last) {
@@ -112,16 +124,48 @@ async function rollback(sql: Client, step: number | undefined): Promise<void> {
   }
 
   const targets = step === undefined ? ran.filter((row) => row.batch === last.batch) : ran.slice(-step);
+  await confirmDown(sql, targets, database, force);
   await runDown(sql, targets.reverse());
 }
 
-async function reset(sql: Client): Promise<void> {
+async function reset(sql: Client, database: string, force: boolean): Promise<void> {
   const ran = await ranMigrations(sql);
   if (ran.length === 0) {
     console.log("Nothing to roll back.");
     return;
   }
+  await confirmDown(sql, ran, database, force);
   await runDown(sql, ran.reverse());
+}
+
+/**
+ * Says what is about to come off, and goes on only when the database's name
+ * is typed back — a `down` usually drops a table, and with it every row.
+ * Without a terminal to ask in, only `--force` goes on. The lock is taken
+ * again after the answer, which on the same session is a no-op and on a
+ * session that dropped while waiting is the check that no one got in.
+ */
+async function confirmDown(sql: Sql, targets: Ran[], database: string, force: boolean): Promise<void> {
+  console.log(`To reverse   ${targets.map((row) => row.migration).join("\n             ")}`);
+  if (force) return;
+
+  if (!process.stdin.isTTY) {
+    throw new Error("Nothing was reversed: without a terminal to confirm in, pass --force.");
+  }
+  const name = database.slice(database.indexOf("/") + 1);
+  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  let answer: string;
+  try {
+    answer = await prompt.question(`This drops what those migrations made on ${database}. Type ${name} to go on: `);
+  } catch {
+    // Ctrl+C or Ctrl+D: no answer is not a yes.
+    throw new Error("Nothing was reversed: no answer was given.");
+  } finally {
+    prompt.close();
+  }
+  if (answer.trim() !== name) throw new Error("Nothing was reversed: the name did not match.");
+
+  await lockForScript(sql);
 }
 
 /** `targets` newest first — the order they have to come off in. */

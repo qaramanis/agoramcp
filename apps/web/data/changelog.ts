@@ -29,6 +29,25 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.34",
+    title: "Put a deadline on every tool call and bound the PDF reads",
+    body: [
+      "A handler makes several upstream requests, each with its own timeout and two retries, so nothing capped a call as a whole: a slow registry could hold one for minutes after the caller's client had given up. `callTool` now gives every call a deadline, `TOOL_TIMEOUT_MS` (60 s by default, about where MCP clients give up), and hands the handler a signal that aborts on it as well as on the caller leaving. A call cut off by it is answered as a retryable `upstream_timeout` naming the registry, on the API and over MCP; a caller who left first is still only noted as `tool.aborted`.",
+      "Diavgeia's and ΚΗΜΔΗΣ's PDF downloads checked the declared length and then read the whole body before checking again, so a response with no length was held whole whatever its size. They now read through `readCapped` and stop at 30 MB as the bytes arrive. Their text is read by `pageTexts`, new in `packages/core/src/pdf.ts`, one page at a time where unpdf started every page at once: the signal is checked before each page, so extraction stops when the call does, and other requests get a turn between pages. On a 19-page Diavgeia decision and a ΚΗΜΔΗΣ payment the text is identical to unpdf's, character for character.",
+      "The web app's read of the server's registry had no timeout, so every page that renders it could hang on a server that accepted the connection and never answered. It now gives up after 10 s with a message, racing the fetch rather than aborting it, since an abort signal would stop Next memoising the one call a page's views share. Five new tests cover the deadline, a caller leaving, and `pageTexts`.",
+    ],
+    date: "2026-09-25",
+  },
+  {
+    version: "v.1.1.33",
+    title: "Make the database scripts ask before they drop anything, and run one at a time",
+    body: [
+      "`db:rollback` and `db:reset` ran the moment they were typed, against whatever `.env.local` named, and the one on the machine these were written on names production. They now list the migrations they would reverse and go on only when the database's name is typed back; a wrong name, or Ctrl+D, reverses nothing. `--force` skips the question, and without a terminal to ask in nothing is reversed without it. Every script run now opens with the database it reached, host and name, never the credentials.",
+      "Two runs against one database could interleave: two `db:migrate`s both finding the same migration pending, or both making the `migrations` table. Every migration and seed run now holds a Postgres advisory lock for as long as it runs, taken with `pg_try_advisory_lock` in `db/client.ts`, so the second is turned away at once with a message rather than left to fail half-way. The scripts' one session is no longer closed for being idle, so the lock survives a confirmation left waiting. Checked against a throwaway Postgres 17: two migrations started together end with one migrated and one refused. The README's Database section says how to run a `down` against a database of your own.",
+    ],
+    date: "2026-09-25",
+  },
+  {
     version: "v.1.1.32",
     title: "Add the first tests: 136, offline, in under four seconds",
     body: [

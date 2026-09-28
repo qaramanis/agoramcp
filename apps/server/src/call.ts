@@ -1,5 +1,6 @@
 import {
   MissingCredentialsError,
+  UpstreamTimeoutError,
   isAgoraError,
   missingEnv,
   sourceKey,
@@ -25,6 +26,13 @@ export interface ToolDeps {
   /** Already carrying the request id, and stamped with `transport` and `mount`. */
   logger: Logger;
   env: Readonly<Partial<Record<string, string>>>;
+  /**
+   * How long one call may take from start to answer, in milliseconds. A
+   * handler makes several upstream requests, each with its own timeout and
+   * retries, so without a cap on the whole a slow registry could hold a call
+   * for minutes after the caller's own client gave up at one.
+   */
+  deadlineMs: number;
   transport: Transport;
   /** The address the call arrived at: `gr` on the country server, `gr/vies` on the source's own. */
   mount: string;
@@ -90,6 +98,7 @@ export async function callTool(
   const args = deps.log.toolArgs ? describeArgs(input) : { argNames: Object.keys(input) };
   const cache = countingCache(deps.cache);
   const startedAt = Date.now();
+  const deadline = AbortSignal.timeout(deps.deadlineMs);
 
   // Off by default. Its one job is to leave a trace of a call the host kills
   // before the outcome line below can be written.
@@ -124,7 +133,8 @@ export async function callTool(
       cache,
       logger,
       ttl: ttlFor(source.meta, tool.name),
-      signal,
+      // The caller leaving and the deadline passing both stop the handler's work.
+      signal: AbortSignal.any([signal, deadline]),
       env: deps.env,
     });
 
@@ -139,6 +149,15 @@ export async function callTool(
     if (signal.aborted) {
       logger.info("tool.aborted", { ...args, durationMs: Date.now() - startedAt, cache: cache.counts() });
       throw error;
+    }
+
+    // Whatever the handler threw, it threw because the deadline cut it off:
+    // the caller is owed a timeout, not the abort it came out as.
+    if (deadline.aborted) {
+      error = new UpstreamTimeoutError(
+        `${source.meta.name} did not answer within ${deps.deadlineMs / 1000} s, so the call was stopped. Ask again: a slow registry is often quicker the second time, once part of the answer is cached.`,
+        { cause: error },
+      );
     }
 
     const code: ErrorCode = isAgoraError(error) ? error.code : "internal";

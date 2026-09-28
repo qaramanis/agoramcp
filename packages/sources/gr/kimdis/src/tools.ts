@@ -404,7 +404,7 @@ export const getDocumentTextTool = defineTool({
       context.cache,
       cacheKey("gr/kimdis:document_text", adam),
       context.ttl,
-      async () => extractDocumentText(await fetchAttachment(type, adam, context.signal)),
+      async () => extractDocumentText(await fetchAttachment(type, adam, context.signal), context.signal),
     );
 
     const fromPage = input.fromPage ?? 1;

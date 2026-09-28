@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { connectForScripts, type Sql } from "./client";
+import { connectForScripts, lockForScript, scriptDatabase, type Sql } from "./client";
 import { loadLocalEnv } from "./env";
 
 /**
@@ -31,8 +31,11 @@ async function main(only: string | undefined): Promise<void> {
   }
 
   loadLocalEnv();
+  console.log(`Database     ${scriptDatabase()}`);
   const sql = connectForScripts();
   try {
+    // The same lock as the migrations, so a seed never runs into one half-way.
+    await lockForScript(sql);
     for (const file of chosen) {
       const loaded = (await import(pathToFileURL(resolve(SEEDERS_DIR, file)).href)) as Partial<Seeder>;
       const seeder = loaded.seed;

@@ -16,6 +16,13 @@ export const MCP_SERVER_URL = process.env.MCP_SERVER_URL ?? "http://127.0.0.1:30
  */
 const REVALIDATE_SECONDS = 60;
 
+/**
+ * Long enough for a server waking from cold to answer `GET /`, which reads
+ * nothing upstream; short enough that a page never hangs on one that will
+ * not answer at all.
+ */
+const TIMEOUT_MS = 10_000;
+
 /** What `describeTool` puts on the wire. */
 export type RegistryTool = {
   name: string;
@@ -67,6 +74,24 @@ export type RegistryResult =
   | { registry: null; unavailable: string };
 
 export async function fetchRegistry(): Promise<RegistryResult> {
+  // A race rather than an abort signal: a signal would stop Next memoising
+  // this fetch, and every view a page renders shares the one call.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<RegistryResult>((resolve) => {
+    timer = setTimeout(
+      () => resolve({ registry: null, unavailable: `The MCP server did not answer within ${TIMEOUT_MS / 1000} s.` }),
+      TIMEOUT_MS,
+    );
+  });
+
+  try {
+    return await Promise.race([load(), timedOut]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function load(): Promise<RegistryResult> {
   try {
     const response = await fetch(`${MCP_SERVER_URL}/`, {
       headers: { accept: "application/json" },
