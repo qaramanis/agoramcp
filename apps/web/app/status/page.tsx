@@ -262,7 +262,11 @@ function Method() {
             >
               every code it can send
             </Link>{" "}
-            is listed with what it means.
+            is listed with what it means. A registry can also fail without an
+            error, by answering with nothing. The earthquake catalogue is asked
+            for its last 24 hours, and has recorded at least ten earthquakes in
+            every 24 hours since 2018, so an answer with none in it is reported
+            as not answering.
           </p>
         </li>
         <li>

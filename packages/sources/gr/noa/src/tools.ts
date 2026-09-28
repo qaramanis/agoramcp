@@ -14,6 +14,7 @@ import {
   type OrderBy,
   type Quake,
   type QuakeNearPoint,
+  type SearchResult,
   type TimeWindow,
 } from "./client.ts";
 
@@ -147,8 +148,14 @@ function locate(quakes: Quake[], circle: Circle): QuakeNearPoint[] {
 const CATALOGUE_START_MS = Date.parse(CATALOGUE_START);
 
 /** What the caller should know about this answer that the rows do not say. */
-function notesFor(window: TimeWindow, truncated: boolean, limit: number, ordered: OrderBy): string[] {
+function notesFor(window: TimeWindow, result: SearchResult, limit: number, ordered: OrderBy): string[] {
   const notes: string[] = [];
+
+  if (result.silent) {
+    notes.push(
+      "Nothing came back, and that is the catalogue's fault rather than a quiet period: right now it answers every window with nothing, even the hour of the 2020 Samos earthquake, the largest event it holds. Until it recovers, an empty list from it says nothing about what happened, so do not report this window as quiet. Try again later; the Institute also shows the last day's earthquakes on its own website, www.gein.noa.gr.",
+    );
+  }
 
   if (window.end.getTime() <= CATALOGUE_START_MS) {
     notes.push(
@@ -160,7 +167,7 @@ function notesFor(window: TimeWindow, truncated: boolean, limit: number, ordered
     );
   }
 
-  if (truncated) {
+  if (result.truncated) {
     const more =
       ordered === "time"
         ? "the most recent"
@@ -293,7 +300,7 @@ export const searchEarthquakesTool = defineTool({
       truncated: result.truncated,
       earthquakes:
         region.circle === undefined ? result.quakes : locate(result.quakes, region.circle),
-      notes: notesFor(window, result.truncated, limit, orderBy),
+      notes: notesFor(window, result, limit, orderBy),
     };
   },
 });
@@ -401,7 +408,7 @@ export const listRecentEarthquakesTool = defineTool({
           ? null
           : { id: largest.id, magnitude: largest.magnitude, region: largest.region, time: largest.time },
       earthquakes: result.quakes,
-      notes: notesFor(window, result.truncated, limit, "time"),
+      notes: notesFor(window, result, limit, "time"),
     };
   },
 });

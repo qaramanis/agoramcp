@@ -44,8 +44,9 @@ export type SourceStatus = {
   /** Round trip in milliseconds, as measured from here. */
   ms: number;
   /**
-   * The API's own code for what went wrong, or `timeout` / `unreachable`
-   * when our own server did not answer. Null when it answered.
+   * The API's own code for what went wrong, `timeout` / `unreachable` when
+   * our own server did not answer, or `empty` when it answered with nothing a
+   * working registry would send (`NEVER_EMPTY`). Null when it answered.
    */
   code: string | null;
   /** What went wrong, when something did. */
@@ -96,6 +97,10 @@ export const PROBE_HEADER = "x-agoramcp-probe";
  *
  * A source not named here is checked with its first tool, so a new registry
  * appears on this page by being mounted rather than by being added to a list.
+ *
+ * NOA is checked with the last day of its catalogue rather than with
+ * `search_earthquakes`. It is a search all the same, and the one whose answer
+ * can be held to something: see `NEVER_EMPTY`.
  */
 const PROBE_TOOLS: Record<string, string> = {
   athens: "search_datasets",
@@ -103,7 +108,30 @@ const PROBE_TOOLS: Record<string, string> = {
   diavgeia: "search_decisions",
   kimdis: "search_contracts",
   mitos: "search_procedures",
+  noa: "list_recent_earthquakes",
   vies: "list_member_states",
+};
+
+/**
+ * Checks whose answer cannot honestly be empty, and how to tell when it is.
+ *
+ * Most registries fail loudly. NOA's catalogue failed quietly on 28 September
+ * 2026: it answered every question with an empty 204, so its check came back
+ * 200 and this page called it answering. A source named here has its answer
+ * read as well, and an empty one is reported as not answering, under the code
+ * `empty`.
+ *
+ * The rule is only as good as the question. NOA is asked for the last day,
+ * with nothing filtered: in the Institute's own record the quietest 24 hours
+ * since 2018 still held ten events, where magnitude 3 and up has gone five
+ * days without one as recently as September 2026.
+ */
+const NEVER_EMPTY: Record<string, { isEmpty: (data: unknown) => boolean; detail: string }> = {
+  noa: {
+    isEmpty: (data) => (data as { count?: unknown } | undefined)?.count === 0,
+    detail:
+      "It answered with no earthquakes for the last 24 hours, where the catalogue has held at least ten every day since 2018: it is up, and returning nothing.",
+  },
 };
 
 export async function loadStatus(): Promise<Status> {
@@ -191,6 +219,11 @@ async function check(source: RegistrySource): Promise<SourceStatus> {
     const ms = Date.now() - started;
 
     if (!response.ok) return { ...base, path, health: "down", ms, ...(await reason(response)) };
+
+    const rule = NEVER_EMPTY[source.id];
+    if (rule && rule.isEmpty(await dataOf(response))) {
+      return { ...base, path, health: "down", ms, code: "empty", detail: rule.detail };
+    }
     return { ...base, path, health: ms > SLOW_MS ? "slow" : "ok", ms, code: null, detail: null };
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "TimeoutError";
@@ -204,6 +237,18 @@ async function check(source: RegistrySource): Promise<SourceStatus> {
         ? `No answer within ${TIMEOUT_MS / 1_000} seconds.`
         : "agoramcp could not be reached.",
     };
+  }
+}
+
+/**
+ * The `data` of an answer, as the API's envelope carries it, or undefined
+ * when the body will not read, which is then no evidence of anything.
+ */
+async function dataOf(response: Response): Promise<unknown> {
+  try {
+    return ((await response.json()) as { data?: unknown }).data;
+  } catch {
+    return undefined;
   }
 }
 

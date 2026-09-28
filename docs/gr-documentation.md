@@ -98,7 +98,10 @@ Full reference:
 
 The Greek earthquake catalogue, kept by the National Observatory of Athens from
 the Hellenic Unified Seismic Network: roughly 60 located events a day, reviewed
-by an analyst, back to February 2011. Full reference:
+by an analyst, back to February 2011. When the catalogue answers every question
+with nothing, as it did on 28 September 2026, the searches say so first in
+their `notes` and `get_earthquake` answers `upstream_unavailable` rather than
+`not_found`. Full reference:
 [`packages/sources/gr/noa/DOCUMENTATION.md`](../packages/sources/gr/noa/DOCUMENTATION.md).
 
 - `search_earthquakes`: find earthquakes by time, magnitude, depth and place — a bounding box or a radius around a point

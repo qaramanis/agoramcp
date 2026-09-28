@@ -13,7 +13,7 @@ export type ProbeRow = {
   source: string;
   tool: string;
   ok: boolean;
-  /** The API's error code, or `unreachable` / `timeout` when our own server did not answer. */
+  /** The API's error code, `unreachable` / `timeout` when our own server did not answer, or `empty` when it answered with nothing. */
   code: string | null;
   durationMs: number;
 };

@@ -29,6 +29,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.35",
+    title: "Stop reading NOA's silent catalogue as a quiet day, or as answering",
+    body: [
+      "On 28 September NOA's FDSN event service answered every query with an empty 204: every window from 2011 to that morning, every event id, every format and filter, in about 50 ms where a month of 2014 used to take 21 s to scan. It is up (`version` answers, and so does the station service on the same host), it has not moved (the FDSN registry and the node's own page still name it, and no other NOA host serves `fdsnws-event`), and no parameter brings anything back: `catalog` is refused as unsupported, and the July 2026 rule that every query be bounded in time is one the adapter already met. The Institute's website catalogue listed events to that morning, so the outage is the service's, not a quiet week. `search_earthquakes` and `list_recent_earthquakes` returned `count: 0` with no note, `get_earthquake` called the Samos earthquake `not_found`, and `/status` showed NOA as answering.",
+      "`packages/sources/gr/noa` no longer believes an empty answer on its own. It then asks for 11:00 to 12:00 UTC on 30 October 2020, an hour that holds the Samos mainshock and cannot be empty while the catalogue answers at all, and holds the verdict for two minutes, so a run of empty answers costs the node one extra request rather than one each. If that hour is empty too, the searches return their empty list with a first note saying the catalogue is answering everything with nothing, and do not cache it, where a settled window would otherwise be held for a day after the service came back; `get_earthquake` answers a retryable `upstream_unavailable` instead of `not_found`. A check that fails proves nothing, and a window before 2011 is not checked. Against the live service, every search came back with the note and the Samos lookup with `upstream_unavailable`.",
+      "`/status` now checks NOA with `list_recent_earthquakes` and its own example, the last 24 hours with nothing filtered, and reads the answer: one with no earthquakes in it is reported as not answering, under the code `empty`, and the cron records it as a failure. In the Institute's own record the quietest 24 hours since 2018 held ten events, where the old check, a week at magnitude 3 and up, asks a question that went five days without an answer in September. `NEVER_EMPTY` in `data/status.ts` holds the rule for any source that can fail this way, and the page's method section says so. Run against the live registries, the check reports NOA as not answering and the other six as answering.",
+      "Six new tests in the NOA package put a stand-in for the node in place of `fetch` before the client loads: a silent catalogue flagged and not held, a quiet window believed and held, no check when there are events or the window predates the catalogue, a failed check proving nothing, `not_found` against `upstream_unavailable`, and the note on `list_recent_earthquakes`. Taking out the fix fails them. The source's `DOCUMENTATION.md` says all of this in section 5, the errors, caching and verification, with two upstream rules found on the way, and `docs/gr-documentation.md` has it in a sentence.",
+    ],
+    date: "2026-09-28",
+  },
+  {
     version: "v.1.1.34",
     title: "Put a deadline on every tool call and bound the PDF reads",
     body: [

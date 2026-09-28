@@ -356,6 +356,12 @@ export interface SearchResult {
   quakes: Quake[];
   /** True when the answer stopped at `limit` and there may be more. */
   truncated: boolean;
+  /**
+   * True when the answer is empty because the catalogue is answering every
+   * question that way — see `catalogueIsSilent`. The empty list then says
+   * nothing about the window.
+   */
+  silent: boolean;
 }
 
 /**
@@ -369,11 +375,26 @@ export async function searchQuakes(
   ttl: number,
   signal: AbortSignal,
 ): Promise<SearchResult> {
-  return withCache(cache, cacheKey("noa:search", asKey(criteria)), ttl, async () => {
+  const key = cacheKey("noa:search", asKey(criteria));
+  const result = await withCache(cache, key, ttl, async () => {
     const body = await getCatalogue(queryFor(criteria), criteria.window, signal, "that search");
     const quakes = parseCatalogue(body);
     return { quakes, truncated: quakes.length >= criteria.limit };
   });
+
+  // A window that closes before the catalogue opens is empty by right, and
+  // its note says so. Any other empty answer is checked, because from inside
+  // one search a quiet window and a silent catalogue look exactly alike.
+  if (result.quakes.length > 0 || criteria.window.end.getTime() <= Date.parse(CATALOGUE_START)) {
+    return { ...result, silent: false };
+  }
+  if (!(await catalogueIsSilent(cache, signal))) return { ...result, silent: false };
+
+  // Not held: this emptiness is the outage's rather than the window's, and a
+  // settled window would otherwise be kept for a day, long after the
+  // catalogue comes back.
+  await cache.delete(key);
+  return { ...result, silent: true };
 }
 
 /** Dates do not survive `cacheKey`'s stable stringify as themselves. */
@@ -496,6 +517,14 @@ export async function fetchQuake(
     );
 
     if (body.trim() === "") {
+      // The same 204 answers an unknown id and a catalogue that has gone
+      // silent. Only the first is the caller's; the second is worth retrying.
+      if (await catalogueIsSilent(cache, signal)) {
+        throw new UpstreamUnavailableError(
+          `The NOA catalogue cannot say whether "${trimmed}" exists: right now it answers every question with nothing, even for the hour of the 2020 Samos earthquake, the largest event it holds. The fault is the service's, not the id's. Try again later.`,
+          { details: { id: trimmed } },
+        );
+      }
       throw new NotFoundError(
         `No event is catalogued under id "${trimmed}". Ids are matched exactly, so copy the case as well — noa2026rnaeb finds the event where NOA2026RNAEB finds nothing — and this catalogue begins on 1 February 2011.`,
         { details: { id: trimmed } },
@@ -700,6 +729,68 @@ function lastSegment(value: string | null): string | null {
 
 function metresToKm(value: number | null): number | null {
   return value === null ? null : value / 1_000;
+}
+
+/* -------------------------------------------------------------------------- */
+/* When the catalogue answers with nothing                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * An hour the catalogue cannot answer empty while it is answering at all:
+ * 11:00 to 12:00 UTC on 30 October 2020, which holds the Samos earthquake,
+ * `noa2020vipzs`, at 11:51 — the largest event in the register, and settled
+ * since its last revision in April 2021. One unfiltered hour of a closed day
+ * is about the cheapest scan this node can be asked for.
+ */
+const PROOF_WINDOW: TimeWindow = {
+  start: new Date("2020-10-30T11:00:00Z"),
+  end: new Date("2020-10-30T12:00:00Z"),
+  days: 1 / 24,
+};
+
+/**
+ * How long a verdict is held. Long enough that a run of empty answers costs
+ * this node one extra request rather than one each; short enough that the
+ * verdict follows the node within minutes, whether it goes silent or comes
+ * back.
+ */
+const SILENCE_TTL_SECONDS = 120;
+
+/**
+ * Whether the catalogue is answering every question with nothing.
+ *
+ * It did on 28 September 2026. Every window tried, from 2011 to that morning,
+ * every event id and every filter came back 204 in about 50 ms — where a month
+ * of 2014 had taken twenty seconds to scan — while `version` still answered
+ * and the Institute's own website was listing that morning's events. Nothing
+ * had failed, so every empty answer read as a quiet period, and
+ * `get_earthquake` called the Samos earthquake not found.
+ *
+ * So an empty answer is not believed until `PROOF_WINDOW` has been asked as
+ * well. A check that fails proves nothing either way: the empty answer then
+ * stands as it came, unless the caller has gone, which ends the call.
+ */
+async function catalogueIsSilent(cache: Cache, signal: AbortSignal): Promise<boolean> {
+  try {
+    return await withCache(
+      cache,
+      cacheKey("noa:silence", PROOF_WINDOW.start.toISOString()),
+      SILENCE_TTL_SECONDS,
+      async () => {
+        const query = {
+          format: "text",
+          starttime: fdsnTime(PROOF_WINDOW.start),
+          endtime: fdsnTime(PROOF_WINDOW.end),
+          limit: 1,
+        };
+        const body = await getCatalogue(query, PROOF_WINDOW, signal, "its own check");
+        return parseCatalogue(body).length === 0;
+      },
+    );
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return false;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
