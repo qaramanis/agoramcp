@@ -178,7 +178,8 @@ export default function Select({
                 setActive(0);
               }}
               onKeyDown={onSearchKeyDown}
-              className="w-full bg-transparent text-[12px] text-foreground outline-none placeholder:text-muted"
+              // 16px below md, or iOS Safari zooms the page into the field.
+              className="w-full bg-transparent text-[16px] text-foreground outline-none placeholder:text-muted md:text-[12px]"
             />
           </div>
 

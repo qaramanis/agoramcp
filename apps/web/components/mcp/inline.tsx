@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
 
-/** An inline literal — a path, a flag, or a tool name as it goes over the wire. */
+/**
+ * An inline literal — a path, a flag, or a tool name as it goes over the wire.
+ * Mono whatever it sits in: the long-form pages set their prose in Geist.
+ */
 export function Code({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-xs bg-muted-background px-1.5 py-0.5 text-[11px] text-foreground">
+    <span className="rounded-xs bg-muted-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">
       {children}
     </span>
   );

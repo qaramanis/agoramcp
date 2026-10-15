@@ -69,7 +69,7 @@ export default function RequestForm({
             type="submit"
             disabled={disabled}
             aria-busy={pending}
-            className="flex h-8 grow cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 px-4 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-all duration-300 hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-40 sm:grow-0"
+            className="flex h-8 grow cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 px-4 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-[background-color,opacity,scale] duration-[300ms,300ms,160ms] ease-out hover:bg-accent/30 enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 sm:grow-0"
           >
             Send request
           </button>

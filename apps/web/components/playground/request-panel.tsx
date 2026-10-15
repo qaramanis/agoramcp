@@ -64,7 +64,7 @@ export default function RequestPanel({
           type="button"
           onClick={onSend}
           disabled={busy}
-          className="flex h-7 shrink-0 cursor-pointer items-center justify-center gap-2 rounded border border-accent/40 bg-accent/20 px-3 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-all duration-300 hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-7 shrink-0 cursor-pointer items-center justify-center gap-2 rounded border border-accent/40 bg-accent/20 px-3 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-[background-color,opacity,scale] duration-[300ms,300ms,160ms] ease-out hover:bg-accent/30 enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy ? "Sending" : "Send"}
           {/* `normal-case` so the Windows label stays "Ctrl", not "CTRL". */}
@@ -226,9 +226,12 @@ function FieldLine({
  * line-height as its content height, so at the block's own leading a chip is
  * fractionally taller than the line box and neighbouring rows collide. Sizing
  * the token below the line leaves the gap.
+ *
+ * 16px below md and the block's 12px from there: iOS Safari zooms the page
+ * into any field set smaller than 16px, and leaves it zoomed.
  */
 const inputClass =
-  "rounded-xs border-none border-transparent bg-panel-border px-1 leading-5 outline-none transition-colors duration-200 placeholder:text-muted hover:bg-muted/70 focus:border-accent focus:bg-muted/70";
+  "rounded-xs border-none border-transparent bg-panel-border px-1 text-[16px] leading-5 outline-none md:text-[12px] transition-colors duration-200 placeholder:text-muted hover:bg-muted/70 focus:border-accent focus:bg-muted/70";
 
 function FieldInput({
   field,

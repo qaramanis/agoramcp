@@ -62,7 +62,7 @@ function MobileNavItem({
         <button
           onClick={onToggleExpand}
           aria-expanded={isExpanded}
-          className="flex w-full cursor-pointer flex-col text-left transition-all duration-300"
+          className="flex w-full cursor-pointer flex-col text-left"
         >
           {row}
         </button>
@@ -70,14 +70,14 @@ function MobileNavItem({
         <Link
           href={href}
           onClick={onClick}
-          className="flex w-full flex-col transition-all duration-300"
+          className="flex w-full flex-col"
         >
           {row}
         </Link>
       )}
       {hasDropdown && (
         <div
-          className="overflow-hidden transition-all duration-300 ease-in-out"
+          className="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
           style={{
             maxHeight: isExpanded ? `${subItems.length * 3}rem` : "0",
             opacity: isExpanded ? 1 : 0,
@@ -89,7 +89,7 @@ function MobileNavItem({
                 key={sub.title}
                 href={sub.url}
                 onClick={onClick}
-                className="text-base text-foreground/60 transition-all duration-300 hover:text-foreground"
+                className="text-base text-foreground/60 transition-colors duration-300 hover:text-foreground"
               >
                 {sub.title}
               </Link>
@@ -178,7 +178,7 @@ export default function NavigationMobile() {
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="pointer-events-auto flex aspect-square h-8 cursor-pointer items-center justify-center rounded-md bg-transparent p-0 text-sm transition-all duration-300 md:hidden"
+        className="pointer-events-auto flex aspect-square h-8 cursor-pointer items-center justify-center rounded-md bg-transparent p-0 text-sm md:hidden"
         aria-label="Toggle navigation menu"
         aria-expanded={isOpen}
       >
@@ -206,7 +206,7 @@ export default function NavigationMobile() {
       {/* Mobile menu panel */}
       <div
         ref={menuRef}
-        className={`fixed top-[52px] right-0 bottom-0 z-99 flex w-full flex-col justify-between overflow-y-auto bg-background px-5 pt-6 pb-8 transition-all duration-300 ease-in-out md:hidden ${
+        className={`fixed top-[52px] right-0 bottom-0 z-99 flex w-full flex-col justify-between overflow-y-auto bg-background px-5 pt-6 pb-8 transition-transform duration-300 ease-drawer md:hidden ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!isOpen}
@@ -234,7 +234,7 @@ export default function NavigationMobile() {
           <Link
             href="/quickstart"
             onClick={closeMenu}
-            className="flex h-10 cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 text-center text-xs font-bold tracking-wider text-accent uppercase transition-all duration-300 hover:bg-accent/30"
+            className="flex h-10 cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 text-center text-xs font-bold tracking-wider text-accent uppercase transition-colors duration-300 hover:bg-accent/30"
           >
             Connect
           </Link>

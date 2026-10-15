@@ -38,6 +38,14 @@
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
+
+    /* Motion curves. Tailwind's own `ease-out` and `ease-in-out` are too soft
+     to read as deliberate, so stronger ones take their names and every class
+     that already says `ease-out` picks them up. The drawer curve is the iOS
+     sheet's (by way of Ionic): off the mark at once, a long soft landing. */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 * {
@@ -78,6 +86,12 @@ body {
     font-size: 12px;
     line-height: 1.4;
     overflow-x: hidden;
+}
+
+/* No grey flash on tap. The buttons answer a press themselves, shrinking while
+   held, so the browser's own highlight would only double it. */
+html {
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Selection, everywhere. The accent at full strength carrying the page

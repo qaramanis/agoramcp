@@ -12,6 +12,10 @@ import type { LegalDocument, LegalSection } from "@/data/legal";
  * of /licenses and /changelog, so the pages the footer files together read as
  * one site. The text is `data/legal.ts`'s; nothing here is specific to
  * either page.
+ *
+ * The paragraphs are Geist at 14px, as on /documentation and the use cases:
+ * pages read start to finish rather than scanned. Headings, labels and links
+ * stay in the site's mono.
  */
 export default function LegalPage({ document }: { document: LegalDocument }) {
   return (
@@ -25,7 +29,7 @@ export default function LegalPage({ document }: { document: LegalDocument }) {
             {document.lead.map((paragraph, index) => (
               <p
                 key={index}
-                className="mt-4 text-[13px] leading-relaxed text-muted-foreground"
+                className="mt-4 font-sans text-[14px] leading-relaxed text-muted-foreground"
               >
                 {paragraph}
               </p>
@@ -65,7 +69,7 @@ function InShort({ lines }: { lines: string[] }) {
       {lines.map((line, index) => (
         <p
           key={index}
-          className="mt-3 border-t border-panel-border/70 pt-3 text-[12px] leading-relaxed text-muted-foreground"
+          className="mt-3 border-t border-panel-border/70 pt-3 font-sans text-[14px] leading-relaxed text-muted-foreground"
         >
           {line}
         </p>
@@ -83,7 +87,7 @@ function Section({ section }: { section: LegalSection }) {
       {section.body.map((paragraph, index) => (
         <p
           key={index}
-          className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground"
+          className="mt-1.5 font-sans text-[14px] leading-relaxed text-muted-foreground"
         >
           <Ticks text={paragraph} />
         </p>

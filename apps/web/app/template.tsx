@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 /**
@@ -12,33 +11,23 @@ import { usePathname } from "next/navigation";
  * this would fade the top-level pages and nothing under them: the catalogue's
  * countries and sources, and one use case to the next, would all snap in.
  *
- * So the whole pathname is the key. A new path is a new `Fade`, mounted from
+ * So the whole pathname is the key. A new path is a new element, mounted from
  * nothing, whichever segment of it changed. Search parameters are deliberately
  * not part of it — `usePathname` leaves them out — so the live console can
  * rewrite its query without the page blinking underneath it.
+ *
+ * The fade itself is CSS: `starting:` is the element's first frame, so it
+ * runs from the first paint of the server's HTML. Holding the page at zero
+ * until a client effect lifted it left everything under the nav blank until
+ * the JavaScript had loaded, and for good without it.
  */
 export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  return <Fade key={pathname}>{children}</Fade>;
-}
-
-function Fade({ children }: { children: React.ReactNode }) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    // One painted frame at zero, so the transition has somewhere to start
-    // from — set in the same tick and there is nothing to animate.
-    const frame = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
   return (
     <div
-      className="transition-opacity duration-300 ease-out"
-      style={{
-        opacity: visible ? 1 : 0,
-      }}
+      key={pathname}
+      className="transition-opacity duration-200 ease-out starting:opacity-0"
     >
       {children}
     </div>

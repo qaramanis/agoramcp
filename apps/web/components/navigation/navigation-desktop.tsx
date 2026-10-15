@@ -94,12 +94,12 @@ export default function NavigationDesktop({
     <>
       <nav
         aria-label="Main navigation"
-        className="pointer-events-auto absolute left-1/2 hidden -translate-x-1/2 transform flex-row items-center gap-6 rounded border border-panel-border bg-panel p-1.5 text-[12px] transition-all duration-300 ease-in-out md:flex"
+        className="pointer-events-auto absolute left-1/2 hidden -translate-x-1/2 transform flex-row items-center gap-6 rounded border border-panel-border bg-panel p-1.5 text-[12px] md:flex"
       >
         {/* Fades in only once the outer logo has scrolled away. */}
         <Link
           href="/"
-          className={`flex items-center justify-center gap-1.5 transition-all duration-300 ease-in-out hover:text-accent hover:opacity-80 ${
+          className={`flex items-center justify-center gap-1.5 transition-[width,opacity,filter] duration-300 ease-in-out hover:text-accent hover:opacity-80 ${
             isScrolled
               ? "w-[104px] opacity-100 blur-0"
               : "pointer-events-none w-0 opacity-0 blur-lg"
@@ -122,7 +122,7 @@ export default function NavigationDesktop({
             return (
               <div
                 key={item.title}
-                className={`group flex h-7 shrink-0 cursor-pointer items-center justify-center rounded px-3 text-center font-medium tracking-wider whitespace-nowrap uppercase transition-all duration-300 ${
+                className={`group flex h-7 shrink-0 cursor-pointer items-center justify-center rounded px-3 text-center font-medium tracking-wider whitespace-nowrap uppercase transition-colors duration-300 ${
                   activeDropdown === dropdownType
                     ? "bg-background text-foreground"
                     : "text-muted-foreground hover:bg-background hover:text-foreground"
@@ -140,7 +140,7 @@ export default function NavigationDesktop({
                   {item.title}
                   <Plus
                     size={12}
-                    className={`ml-1.5 transition-all duration-300 ${
+                    className={`ml-1.5 transition-transform duration-300 ${
                       activeDropdown === dropdownType ? "rotate-45" : ""
                     }`}
                   />
@@ -153,7 +153,7 @@ export default function NavigationDesktop({
             <Link
               key={item.title}
               href={item.url}
-              className="group flex h-7 shrink-0 cursor-pointer items-center justify-center rounded px-3 text-center font-medium tracking-wider whitespace-nowrap text-muted-foreground uppercase transition-all duration-300 hover:bg-background hover:text-foreground"
+              className="group flex h-7 shrink-0 cursor-pointer items-center justify-center rounded px-3 text-center font-medium tracking-wider whitespace-nowrap text-muted-foreground uppercase transition-colors duration-300 hover:bg-background hover:text-foreground"
               onMouseEnter={() => handleDropdownEnter(null)}
             >
               <span className="flex items-center text-[10px]">
@@ -181,7 +181,7 @@ export default function NavigationDesktop({
         {/* Mirrors the logo: slides in as the outer CTA fades out. */}
         <Link
           href="/quickstart"
-          className={`flex h-7 cursor-pointer items-center justify-center overflow-hidden rounded border border-accent/40 bg-accent/20 text-center text-[10px] font-bold tracking-wider whitespace-nowrap text-accent uppercase transition-all duration-300 ease-in-out hover:bg-accent/30 ${
+          className={`flex h-7 cursor-pointer items-center justify-center overflow-hidden rounded border border-accent/40 bg-accent/20 text-center text-[10px] font-bold tracking-wider whitespace-nowrap text-accent uppercase transition-[width,opacity,filter,background-color] duration-300 ease-in-out hover:bg-accent/30 ${
             isScrolled
               ? "w-[90px] opacity-100 blur-0"
               : "pointer-events-none w-0 opacity-0 blur-lg"

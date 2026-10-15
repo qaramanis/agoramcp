@@ -36,6 +36,8 @@ export default function DropdownContainer({
 }: DropdownContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dimensionsRef = useRef({ width: 0, height: 0 });
+  /** The panel whose content last faded in, so a keystroke does not fade it again. */
+  const fadedRef = useRef<DropdownType>(null);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -44,6 +46,7 @@ export default function DropdownContainer({
     if (!activeDropdown) {
       // Closing — drop the inline sizes so Tailwind owns opacity/transform.
       dimensionsRef.current = { width: 0, height: 0 };
+      fadedRef.current = null;
       container.style.removeProperty("width");
       container.style.removeProperty("height");
       container.style.removeProperty("transition");
@@ -78,10 +81,18 @@ export default function DropdownContainer({
       container.style.height = `${targetHeight}px`;
     } else {
       // First open: nothing to morph from, so just adopt the measured size.
+      // The curve is `--ease-out` from globals.css.
       container.style.width = `${targetWidth}px`;
       container.style.height = `${targetHeight}px`;
-      container.style.transition = "opacity 0.4s ease, transform 0.3s ease";
+      container.style.transition =
+        "opacity 0.2s cubic-bezier(0.23, 1, 0.32, 1), transform 0.2s cubic-bezier(0.23, 1, 0.32, 1)";
     }
+
+    // Only a new panel fades in. A keystroke re-measures the search panel but
+    // its results are already in view, and fading them up from nothing on
+    // every character made them blink while the reader typed.
+    if (fadedRef.current === activeDropdown) return;
+    fadedRef.current = activeDropdown;
 
     const contentEl = container.querySelector(
       ".dropdown-content",
@@ -89,7 +100,7 @@ export default function DropdownContainer({
     if (contentEl) {
       contentEl.style.opacity = "0";
       requestAnimationFrame(() => {
-        contentEl.style.transition = "opacity 0.6s ease";
+        contentEl.style.transition = "opacity 0.2s cubic-bezier(0.23, 1, 0.32, 1)";
         contentEl.style.opacity = "1";
       });
     }
@@ -199,7 +210,7 @@ function PanelRow({
   icon?: ReactNode;
   className?: string;
 }) {
-  const rowClass = `group cursor-pointer rounded-md text-left transition-all duration-300 hover:bg-background ${className}`;
+  const rowClass = `group cursor-pointer rounded-md text-left transition-colors duration-300 hover:bg-background ${className}`;
 
   const title = (
     <span className="text-[13px] font-semibold tracking-wide text-foreground transition-colors duration-300 group-hover:text-accent">

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Geist, JetBrains_Mono } from "next/font/google";
 import Navigation from "@/components/navigation/navigation";
@@ -21,6 +21,12 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "agoramcp",
   description: "MCP servers over open government data.",
+};
+
+// The site is dark-only, so a phone's browser bar takes the page's own
+// background instead of the system's light one.
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

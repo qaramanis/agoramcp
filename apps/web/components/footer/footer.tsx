@@ -41,15 +41,16 @@ export default function Footer() {
       className={`sticky bottom-0 flex w-full flex-col justify-end overflow-hidden bg-foreground pt-12 pb-4 text-background ${gutterClass}`}
     >
       {/* Wordmark. The gradient sweeps the accent across the letters slowly
-          enough to read as a sheen rather than an animation. */}
+          enough to read as a sheen rather than an animation, and holds still
+          for a reader who has asked for less motion. A class rather than an
+          inline style, because only a class can take `motion-reduce:`. */}
       <div className="mb-8 w-full overflow-hidden text-start md:mb-16">
         <span
-          className="bg-clip-text text-[8vw] leading-none font-bold tracking-tight whitespace-nowrap text-transparent"
+          className="animate-[gradientPulse_20s_ease-in-out_infinite] bg-clip-text text-[8vw] leading-none font-bold tracking-tight whitespace-nowrap text-transparent motion-reduce:animate-none"
           style={{
             backgroundImage:
               "linear-gradient(to right, #0a0a0a, #4ade80, #0a0a0a, #4ade80, #0a0a0a, #4ade80, #0a0a0a)",
             backgroundSize: "200% 100%",
-            animation: "gradientPulse 20s ease-in-out infinite",
           }}
         >
           AGORA.MCP
@@ -98,7 +99,7 @@ export default function Footer() {
             href="https://qaramanis.com"
             target="_blank"
             rel="noopener"
-            className="transition-all duration-300 ease-in-out hover:text-background"
+            className="transition-colors duration-300 ease-in-out hover:text-background"
           >
             qaramanis
           </Link>

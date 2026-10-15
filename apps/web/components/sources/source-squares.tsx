@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { columnGapClass } from "@/components/layout/grid";
 import {
@@ -19,6 +19,11 @@ const filledSquareClass = `${squareClass} hover:border-accent/50`;
 
 /** Distance from the pointer to the label's top left corner. */
 const CURSOR_OFFSET = 14;
+
+/** Between one diagonal of squares and the next as the grid comes in. */
+const STAGGER_MS = 30;
+/** `--ease-out` from globals.css: the Web Animations API takes the curve, not the token. */
+const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
 
 function SourceMark({ source }: { source: SourceLogo }) {
   if (!source.logo) {
@@ -48,6 +53,60 @@ function SourceMark({ source }: { source: SourceLogo }) {
 export default function SourceSquares() {
   const [label, setLabel] = useState<string | null>(null);
   const labelRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // The squares come in once, the first time the grid scrolls into view: each
+  // rises 8px into place, a diagonal at a time from the top left, so the set
+  // has landed inside 600ms. A grid already on screen when the page opens is
+  // left alone rather than blinked out under the reader, and without
+  // JavaScript nothing is hidden at all. Under reduced motion it is a fade.
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    if (grid.getBoundingClientRect().top < window.innerHeight) return;
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Four columns on a phone and ten from md, so read the ones laid out.
+    const columns = getComputedStyle(grid).gridTemplateColumns.split(" ").length;
+
+    // Created paused, so each square holds its first frame (hidden) while it
+    // is still below the fold, and plays when the grid is properly in view.
+    const animations = Array.from(grid.children).map((square, index) => {
+      const diagonal = Math.floor(index / columns) + (index % columns);
+      const animation = square.animate(
+        reduce
+          ? [{ opacity: 0 }, { opacity: 1 }]
+          : [
+              { opacity: 0, transform: "translateY(8px)" },
+              { opacity: 1, transform: "translateY(0)" },
+            ],
+        {
+          duration: 300,
+          delay: diagonal * STAGGER_MS,
+          easing: EASE_OUT,
+          fill: "backwards",
+        },
+      );
+      animation.pause();
+      return animation;
+    });
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        observer.disconnect();
+        animations.forEach((animation) => animation.play());
+      },
+      { rootMargin: "0px 0px -15% 0px" },
+    );
+    observer.observe(grid);
+    // Cancelled too, or a paused set left behind (React runs this twice in
+    // development) would hold the squares hidden for good.
+    return () => {
+      observer.disconnect();
+      animations.forEach((animation) => animation.cancel());
+    };
+  }, []);
 
   const total = SOURCE_GRID_COLUMNS * SOURCE_GRID_ROWS;
   // The last square is always "and more", so it never gets filled by a source.
@@ -69,6 +128,7 @@ export default function SourceSquares() {
   return (
     <>
       <div
+        ref={gridRef}
         className={`mt-8 grid grid-cols-4 gap-y-1 md:grid-cols-10 md:gap-y-2 lg:gap-y-4 ${columnGapClass}`}
         onMouseMove={moveLabel}
         onMouseLeave={() => setLabel(null)}
@@ -96,7 +156,7 @@ export default function SourceSquares() {
 
         <div className={filledSquareClass}>
           <span className="text-[9px] leading-tight tracking-wider text-muted">
-            more comming soon
+            more coming soon
           </span>
         </div>
       </div>

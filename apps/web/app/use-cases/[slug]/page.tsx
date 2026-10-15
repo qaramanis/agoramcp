@@ -42,7 +42,7 @@ export default async function UseCasePage({
             <h1 className="text-[2.5rem] leading-[1.2] font-medium tracking-tight text-foreground">
               {useCase.title}
             </h1>
-            <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
+            <p className="mt-4 font-sans text-[14px] leading-relaxed text-muted-foreground">
               {useCase.blurb}
             </p>
           </div>
@@ -57,7 +57,7 @@ export default async function UseCasePage({
       </header>
 
       <Band title="How it answers.">
-        <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
+        <p className="col-span-8 col-start-1 mt-3 font-sans text-[14px] leading-relaxed text-muted-foreground md:col-span-6">
           The model picks the tools and the order itself. This is the path it
           takes, and the tools are named as they go over the wire. Each one is
           in the catalogue, with its arguments and an example it ships with.
@@ -75,7 +75,7 @@ export default async function UseCasePage({
       </Band>
 
       <Band title="The registries behind it.">
-        <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
+        <p className="col-span-8 col-start-1 mt-3 font-sans text-[14px] leading-relaxed text-muted-foreground md:col-span-6">
           Official publishers, unmodified. Each answer carries the licence and
           the attribution its registry asks for, and every tool above is listed
           on the source&apos;s own page.
@@ -104,7 +104,7 @@ export default async function UseCasePage({
               {exit.title}
               <ArrowUpRight size={12} className="shrink-0" />
             </span>
-            <span className="text-[12px] leading-relaxed text-muted-foreground">
+            <span className="font-sans text-[14px] leading-relaxed text-muted-foreground">
               {exit.description}
             </span>
           </Link>

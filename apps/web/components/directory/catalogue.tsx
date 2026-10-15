@@ -80,7 +80,9 @@ export default function Catalogue({
                 onKeyDown={(event) => {
                   if (event.key === "Escape") setQuery("");
                 }}
-                className="w-full bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted disabled:cursor-not-allowed"
+                // 16px below md: iOS Safari zooms the page into any field
+                // set smaller than that, and leaves it zoomed.
+                className="w-full bg-transparent text-[16px] text-foreground outline-none placeholder:text-muted disabled:cursor-not-allowed md:text-[13px]"
               />
               {needle.length > 0 && !nothing && (
                 <span className="shrink-0 text-[11px] text-muted tabular-nums">

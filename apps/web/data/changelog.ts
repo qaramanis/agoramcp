@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.36",
+    title: "Show every page before its script loads, fit the site to phones, and tighten its motion",
+    body: [
+      "Every page faded in from a client effect that held it at zero until the JavaScript had loaded, so a slow connection saw nothing under the nav and a reader without JavaScript saw nothing at all. `app/template.tsx` now fades with CSS, `starting:opacity-0`, from the first paint, in 200 ms. The nav's search results no longer fade up from nothing on every keystroke, and a new panel fades in 200 ms rather than 600.",
+      "`ease-out` and `ease-in-out` are stronger curves, set once in `globals.css`. Eleven buttons shrink to 97% while pressed, the mobile menu slides on an iOS sheet curve, the use-case tabs switch in 300 ms rather than 600, every `transition-all` names its properties, and the footer's sheen holds still under reduced motion. The copy icon cross-fades into a tick, and the landing page's source squares rise into place a diagonal at a time the first time they scroll into view.",
+      "On a phone the hero's eclipse is hidden, where it widened the page to 585 px and pushed the menu button off screen. The hero is `100svh` tall, the browser bar takes the site's `#0a0a0a`, a tap no longer flashes grey, and the search and playground fields are 16 px so iOS Safari does not zoom into them. The paragraphs of /documentation, the use cases, /privacy and /terms are set in Geist at 14 px, with headings, labels, links and inline code left in mono, and the last source square reads \"more coming soon\".",
+    ],
+    date: "2026-10-15",
+  },
+  {
     version: "v.1.1.35",
     title: "Stop reading NOA's silent catalogue as a quiet day, or as answering",
     body: [
