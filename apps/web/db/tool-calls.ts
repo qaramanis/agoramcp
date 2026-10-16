@@ -64,94 +64,147 @@ export async function knownSources(days: number): Promise<string[]> {
 }
 
 /* -------------------------------------------------------------------------- */
-/* The monitor's latest checks                                                */
+/* The evidence                                                               */
 /* -------------------------------------------------------------------------- */
 
 /**
- * One of the monitor's checks, as the page reads it back. Times are ISO
- * strings rather than dates: the page caches what it reads, and a cache
- * keeps JSON.
+ * What the record says about one registry: the newest call or check, the
+ * unbroken run of the same outcome behind it, the last day, and the newest
+ * of the monitor's own checks. Times are ISO strings rather than dates: the
+ * page caches what it reads, and a cache keeps JSON.
  */
-export type ProbeRecord = {
+export type EvidenceRecord = {
+  source: string;
+  latest: {
+    at: string;
+    /** `probe` for the monitor's daily check, `api` or `mcp` for a real call. */
+    via: string;
+    tool: string;
+    /** Answered, or failed for a reason that was the caller's own. */
+    answered: boolean;
+    code: string | null;
+    detail: string | null;
+    durationMs: number;
+  };
+  run: {
+    /** The first call or check of the run that ends in the latest. */
+    since: string;
+    count: number;
+    /** No opposite outcome in the window: the run began before it. */
+    reachesBack: boolean;
+  };
+  lastDay: { total: number; failed: number };
+  probe: { at: string; tool: string; ok: boolean; code: string | null; detail: string | null; durationMs: number } | null;
+};
+
+type EvidenceRow = {
   source: string;
   tool: string;
-  calledAt: string;
-  ok: boolean;
+  transport: string;
+  called_at: Date;
+  answered: boolean;
   code: string | null;
   detail: string | null;
-  durationMs: number;
+  duration_ms: number;
+  run_since: Date;
+  run_count: number;
+  reaches_back: boolean;
+  day_total: number;
+  day_failed: number;
+  probe_at: Date | null;
+  probe_tool: string | null;
+  probe_ok: boolean | null;
+  probe_code: string | null;
+  probe_detail: string | null;
+  probe_ms: number | null;
 };
 
 /**
- * Every check of the last `hours`, newest first within each source: enough
- * to say what each registry is doing now and since when. A day of them is
- * 144 rows a source, read through the partial index the monitor's rows have
- * to themselves.
+ * Every source's evidence over the last `days`, one row each, in one query:
+ * real calls and the monitor's checks are read alike, since either one shows
+ * whether the registry answered. A caller's own mistake counts as answered,
+ * as it does in the history. The run is everything since the last call or
+ * check with the other outcome.
  */
-export async function listRecentProbes(hours: number): Promise<ProbeRecord[]> {
-  const sql = db();
-  const rows = await sql<
-    { source: string; tool: string; called_at: Date; ok: boolean; code: string | null; detail: string | null; duration_ms: number }[]
-  >`
-    select source, tool, called_at, ok, code, detail, duration_ms
-    from tool_calls
-    where transport = 'probe' and called_at >= now() - make_interval(hours => ${hours})
-    order by source, called_at desc`;
-  return rows.map((row) => ({
-    source: row.source,
-    tool: row.tool,
-    calledAt: row.called_at.toISOString(),
-    ok: row.ok,
-    code: row.code,
-    detail: row.detail,
-    durationMs: row.duration_ms,
-  }));
-}
-
-/** Real calls a source has answered and failed since its latest check. */
-export type TrafficRecord = {
-  source: string;
-  total: number;
-  failed: number;
-  lastAnsweredAt: string | null;
-  lastFailedAt: string | null;
-};
-
-/**
- * What everyone else's calls say since each source's latest check: the
- * monitor asks once every ten minutes, and the calls in between are free
- * evidence. Only calls the server recorded — MCP and the API — and only after
- * the check, so the two never describe the same moment. A caller's own
- * mistake counts as answered, as it does in the history.
- */
-export async function listTrafficSinceProbes(hours: number): Promise<TrafficRecord[]> {
+export async function listEvidence(days: number): Promise<EvidenceRecord[]> {
   const sql = db();
   const own = [...CALLERS_OWN];
-  const rows = await sql<
-    { source: string; total: number; failed: number; last_answered: Date | null; last_failed: Date | null }[]
-  >`
-    with latest as (
-      select source, max(called_at) as checked_at
+  const rows = await sql<EvidenceRow[]>`
+    with evidence as (
+      select source, tool, transport, called_at, code, detail, duration_ms,
+             (ok or code = any(${own})) as answered
       from tool_calls
-      where transport = 'probe' and called_at >= now() - make_interval(hours => ${hours})
+      where called_at >= now() - make_interval(days => ${days})
+    ),
+    latest as (
+      select distinct on (source) *
+      from evidence
+      order by source, called_at desc
+    ),
+    bounds as (
+      select source,
+             max(called_at) filter (where answered) as last_answered,
+             max(called_at) filter (where not answered) as last_failed,
+             count(*) filter (where called_at >= now() - interval '24 hours')::int as day_total,
+             count(*) filter (where called_at >= now() - interval '24 hours' and not answered)::int as day_failed
+      from evidence
       group by source
+    ),
+    run as (
+      select evidence.source, min(evidence.called_at) as since, count(*)::int as count
+      from evidence
+      join latest using (source)
+      join bounds using (source)
+      where evidence.answered = latest.answered
+        and evidence.called_at > coalesce(
+          case when latest.answered then bounds.last_failed else bounds.last_answered end,
+          '-infinity'::timestamptz
+        )
+      group by evidence.source
+    ),
+    probe as (
+      select distinct on (source) source, tool, called_at, ok, code, detail, duration_ms
+      from tool_calls
+      where transport = 'probe' and called_at >= now() - make_interval(days => ${days})
+      order by source, called_at desc
     )
     select
-      calls.source,
-      count(*)::int as total,
-      count(*) filter (where not calls.ok and (calls.code is null or calls.code <> all(${own})))::int as failed,
-      max(calls.called_at) filter (where calls.ok or calls.code = any(${own})) as last_answered,
-      max(calls.called_at) filter (where not calls.ok and (calls.code is null or calls.code <> all(${own}))) as last_failed
-    from tool_calls as calls
-    join latest on latest.source = calls.source and calls.called_at > latest.checked_at
-    where calls.transport <> 'probe'
-    group by calls.source`;
+      latest.source, latest.tool, latest.transport, latest.called_at, latest.answered,
+      latest.code, latest.detail, latest.duration_ms,
+      run.since as run_since, run.count as run_count,
+      (case when latest.answered then bounds.last_failed else bounds.last_answered end) is null as reaches_back,
+      bounds.day_total, bounds.day_failed,
+      probe.called_at as probe_at, probe.tool as probe_tool, probe.ok as probe_ok,
+      probe.code as probe_code, probe.detail as probe_detail, probe.duration_ms as probe_ms
+    from latest
+    join bounds using (source)
+    join run using (source)
+    left join probe using (source)`;
+
   return rows.map((row) => ({
     source: row.source,
-    total: row.total,
-    failed: row.failed,
-    lastAnsweredAt: row.last_answered?.toISOString() ?? null,
-    lastFailedAt: row.last_failed?.toISOString() ?? null,
+    latest: {
+      at: row.called_at.toISOString(),
+      via: row.transport,
+      tool: row.tool,
+      answered: row.answered,
+      code: row.code,
+      detail: row.detail,
+      durationMs: row.duration_ms,
+    },
+    run: { since: row.run_since.toISOString(), count: row.run_count, reachesBack: row.reaches_back },
+    lastDay: { total: row.day_total, failed: row.day_failed },
+    probe:
+      row.probe_at === null
+        ? null
+        : {
+            at: row.probe_at.toISOString(),
+            tool: row.probe_tool ?? "",
+            ok: row.probe_ok ?? false,
+            code: row.probe_code,
+            detail: row.probe_detail,
+            durationMs: row.probe_ms ?? 0,
+          },
   }));
 }
 

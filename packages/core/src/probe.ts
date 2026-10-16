@@ -28,12 +28,12 @@ export interface ProbeExpectation {
 
 /**
  * How the status monitor asks a source whether it is answering: one tool,
- * called through the public API every ten minutes with the cache skipped, so
- * that each check reaches the registry itself.
+ * called through the public API once a day with the cache skipped, so that
+ * each check reaches the registry itself.
  *
  * The source chooses it because only the source knows its cheapest live
  * question. That is a search or a list, never a lookup of someone's record;
- * one whose fresh answer is small, since it is asked 144 times a day; and,
+ * one whose fresh answer is small, since it is asked every day; and,
  * where it can be held to something, one whose answer cannot honestly be
  * empty — a registry that fails by answering with nothing is otherwise
  * reported as up.

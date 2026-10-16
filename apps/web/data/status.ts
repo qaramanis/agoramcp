@@ -1,14 +1,7 @@
 import { fallsShort, PROBE_HEADER, type ResolvedProbe } from "@agoramcp/core/probe";
 import { PROXY_HEADER } from "@agoramcp/core/requester";
 import { unstable_cache } from "next/cache";
-import {
-  listRecentProbes,
-  listSourceHistory,
-  listTrafficSinceProbes,
-  type DayRow,
-  type ProbeRecord,
-  type TrafficRecord,
-} from "@/db/tool-calls";
+import { listEvidence, listSourceHistory, type DayRow, type EvidenceRecord } from "@/db/tool-calls";
 import { allPath } from "./directory";
 import { greeklish } from "./greeklish";
 import { fetchRegistry, MCP_SERVER_URL, type Registry, type RegistrySource } from "./registry";
@@ -16,8 +9,8 @@ import {
   buildHistory,
   composeSources,
   composeVerdict,
+  EVIDENCE_DAYS,
   HISTORY_DAYS,
-  RUN_WINDOW_HOURS,
   SLOW_MS,
   TIMEOUT_MS,
   type Mounted,
@@ -31,19 +24,19 @@ export * from "./status-model";
 /**
  * The status monitor, and the page that reports it.
  *
- * The monitor is the cron at `/api/cron/status`: every ten minutes it makes
- * one real call per mounted registry, the way anyone else would — a plain
- * HTTP request to the public API — and writes what came back as a `probe`
- * row. Each source declares the call (`probe` on its `defineSource`): its
+ * The monitor is the cron at `/api/cron/status`: once a day it makes one
+ * real call per mounted registry, the way anyone else would — a plain HTTP
+ * request to the public API — and writes what came back as a `probe` row.
+ * Each source declares the call (`probe` on its `defineSource`): its
  * cheapest live question, and what a working registry cannot answer without.
  * The request carries the web app's proof, so the server skips its cache and
  * the question reaches the registry itself.
  *
- * The page calls nothing. It reads the monitor's latest rounds, the real
- * calls recorded since, and the ninety-day history, all from the database,
- * and holds what it read for a minute — or until the monitor's next round,
- * which clears it. So a reader sees the newest check within seconds of it
- * being made, and a thousand readers cost one query.
+ * The page calls nothing. It reads each registry's newest call or check,
+ * whoever made it, and the ninety-day history, all from the database, and
+ * holds what it read for a minute — or until the monitor's next round, which
+ * clears it. So a real call that failed is on the page within a minute, and
+ * a thousand readers cost one read.
  */
 
 /** The tag the page's read is cached under; the cron clears it after each round. */
@@ -200,24 +193,22 @@ async function reason(response: Response): Promise<{ code: string; detail: strin
 /* -------------------------------------------------------------------------- */
 
 type MonitorRead = {
-  checks: ProbeRecord[];
-  traffic: TrafficRecord[];
+  evidence: EvidenceRecord[];
   days: DayRow[];
 };
 
 /**
- * Everything the page needs from the database, in three queries side by
- * side, held for a minute and dropped as soon as the monitor records a new
- * round. JSON throughout: times are ISO strings, since the cache keeps JSON.
+ * Everything the page needs from the database, in two queries side by side,
+ * held for a minute and dropped as soon as the monitor records a new round.
+ * JSON throughout: times are ISO strings, since the cache keeps JSON.
  */
 const readMonitor = unstable_cache(
   async (): Promise<MonitorRead> => {
-    const [checks, traffic, days] = await Promise.all([
-      listRecentProbes(RUN_WINDOW_HOURS),
-      listTrafficSinceProbes(RUN_WINDOW_HOURS),
+    const [evidence, days] = await Promise.all([
+      listEvidence(EVIDENCE_DAYS),
       listSourceHistory(HISTORY_DAYS, SLOW_MS),
     ]);
-    return { checks, traffic, days };
+    return { evidence, days };
   },
   ["status-monitor"],
   { tags: [STATUS_TAG], revalidate: READ_SECONDS },
@@ -236,10 +227,10 @@ export type Status = {
 
 export async function loadStatus(now: Date = new Date()): Promise<Status> {
   const [registry, read] = await Promise.all([fetchRegistry(), readMonitorSafely()]);
-  const { checks, traffic, days } = read.data;
+  const { evidence, days } = read.data;
 
   // The registries are named and linked from the server's own list. Should it
-  // not answer, the record still knows which registries it has been checking.
+  // not answer, the record still knows which registries have been asked.
   const mounted: Mounted[] = registry.registry
     ? bundled(registry.registry).map((source) => ({
         key: source.key,
@@ -248,16 +239,16 @@ export async function loadStatus(now: Date = new Date()): Promise<Status> {
         name: greeklish(source.name),
         href: allPath(source.country, source.id),
       }))
-    : [...new Set(checks.map((entry) => entry.source))].map((key) => {
+    : evidence.map(({ source: key }) => {
         const [country = "", id = ""] = key.split("/");
         return { key, id, country, name: key, href: allPath(country, id) };
       });
 
-  const sources = composeSources(mounted, checks, traffic, now);
+  const sources = composeSources(mounted, evidence, now);
   return {
     verdict: read.unavailable
-      ? { state: "none", summary: "The monitor's record could not be read.", checkedAt: null, nextCheckBy: null }
-      : composeVerdict(sources, checks, now),
+      ? { state: "none", summary: "The record could not be read.", askedAt: null, checkedAt: null, monitorLate: false }
+      : composeVerdict(sources, now),
     sources,
     history: buildHistory(days, mounted.map((source) => source.key), now),
     monitorUnavailable: read.unavailable,
@@ -272,8 +263,8 @@ async function readMonitorSafely(): Promise<{ data: MonitorRead; unavailable: st
   } catch (error) {
     console.error("status: database unavailable", error);
     return {
-      data: { checks: [], traffic: [], days: [] },
-      unavailable: "The monitor's record could not be read just now, so there is nothing to report.",
+      data: { evidence: [], days: [] },
+      unavailable: "The record of calls could not be read just now, so there is nothing to report.",
     };
   }
 }
