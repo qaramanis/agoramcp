@@ -10,7 +10,7 @@
     "start": "pnpm --filter @agoramcp/server start",
     "start:web": "pnpm --filter @agoramcp/web start",
     "typecheck": "pnpm -r typecheck",
-    "test": "tsx --test \"packages/*/src/**/*.test.ts\" \"packages/sources/*/*/src/**/*.test.ts\" \"apps/server/src/**/*.test.ts\"",
+    "test": "tsx --test \"packages/*/src/**/*.test.ts\" \"packages/sources/*/*/src/**/*.test.ts\" \"apps/server/src/**/*.test.ts\" \"apps/web/data/**/*.test.ts\"",
     "lint": "pnpm -r lint"
   },
   "devDependencies": {

@@ -33,13 +33,6 @@ declare module "hono" {
 }
 
 /**
- * Sent by the status page's probe. A probe is logged like any call and marked
- * as one, so it can be told apart from a person — and it is not recorded,
- * because the probe writes its own row.
- */
-export const PROBE_HEADER = "x-agoramcp-probe";
-
-/**
  * A caller's own `x-request-id` is kept when it looks like an id — a UUID, a
  * trace id, `fra1::abc-123` — so their logs and ours join up. Anything
  * longer or stranger is replaced: it goes on every line and into the
@@ -77,7 +70,9 @@ export function requestLogger(logger: Logger): MiddlewareHandler {
         path: c.req.path,
         status: c.res.status,
         durationMs: Date.now() - startedAt,
-        probe: c.req.header(PROBE_HEADER) === undefined ? undefined : true,
+        // The monitor's checks are logged like any call, and named as what
+        // they proved to be: see `middleware/probe.ts`.
+        probe: c.get("probe"),
         rpcMethod: rpc?.method,
         rpcId: rpc?.id,
         batch: rpc?.batch,

@@ -47,6 +47,17 @@ export const athensSource = defineSource({
   country: "gr",
   meta,
   tools,
+  // One format's datasets, one record back: the index searched live, and a
+  // count that cannot fall to nothing.
+  probe: {
+    tool: "search_datasets",
+    input: { format: "JSON", size: 1 },
+    expect: {
+      field: "total",
+      atLeast: 100,
+      detail: "Its catalogue counted fewer than 100 JSON datasets, where it holds over 320: the index is answering empty.",
+    },
+  },
   // The register of bodies takes upstream ~3 s. Fetched now so the first
   // list_organizations answers at once.
   async warm(context) {

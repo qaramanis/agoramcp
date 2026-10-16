@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.38",
+    title: "Serve /status from recorded probe rounds, declare probes per source, and bypass the cache for authenticated probes",
+    body: [
+      "`/status` called all 13 registries on every view, so each visitor waited for the slowest and a crawler could hammer them. It now calls nothing: it reads the monitor's latest round, the real calls recorded since, and the 90-day history from `tool_calls`, holds the read for a minute, and the cron clears it after each round, so a new round is on the page within seconds. Each registry shows since when its state has held and what real calls have said since its check; a registry not checked for 25 minutes, or a round in which our own server did not answer, is said as such.",
+      "Each source now declares its own `probe`: its cheapest live call and what its answer cannot be without, checked at boot and published on `GET /`, so the web app keeps no list of its own. NOA's never-empty rule became one of these, and every other source has one. The monitor's call carries `PROXY_SECRET` as proof, and the server then reads nothing from its cache for it, so a check reaches the registry instead of an earlier answer, and still caches what it fetched. A forged mark is recorded like any call and logged as `probe.unproven`.",
+      "A migration adds `detail` to `tool_calls`, the reason a check failed, and a partial index for the latest checks; run it before deploying, and set `PROXY_SECRET` on both projects. The page's rules are pure and tested in `data/status-model.ts`, and `pnpm test` now runs the web app's tests too: 226 pass. The page, the cron and the migration ran end to end against a local Postgres, through a healthy round, a silent registry, failed calls, our server down and a stopped monitor.",
+    ],
+    date: "2026-10-16",
+  },
+  {
     version: "v.1.1.37",
     title: "Add six Greek sources: the Government Gazette, Eurostat, the ECB, fuel prices, ΑΔΜΗΕ and the fire-risk map",
     body: [

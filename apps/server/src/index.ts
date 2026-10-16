@@ -6,11 +6,12 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { apiError, describeCountryApi, describeSourceApi, findTool, handleToolCall } from "./api.ts";
-import type { ToolDeps, Transport } from "./call.ts";
+import { writeOnlyCache, type ToolDeps, type Transport } from "./call.ts";
 import { loadConfig } from "./config.ts";
 import { createBundleServer, createSourceServer, SERVER_VERSION, type CallTrace } from "./mcp.ts";
-import { PROBE_HEADER, requestLogger, type CallSummary } from "./middleware/logging.ts";
+import { requestLogger, type CallSummary } from "./middleware/logging.ts";
 import { createIdentify } from "./middleware/client.ts";
+import { probeMode } from "./middleware/probe.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
 import { createCallRecorder } from "./record.ts";
 import {
@@ -53,6 +54,8 @@ app.use(
     exposeHeaders: ["mcp-session-id", "mcp-protocol-version", "x-request-id"],
   }),
 );
+
+app.use("*", probeMode(config.proxySecret));
 
 app.get("/health", (c) =>
   c.json({ status: "ok", version: SERVER_VERSION, sources: registry.size, countries: bundles.size }),
@@ -199,16 +202,18 @@ app.all("/:country/api/:source/:tool", (c) => {
 /**
  * The deps for one request: what every call shares, plus the request's own
  * logger — already carrying its id — stamped with how and where the call
- * arrived. The status probe is logged like any call and marked as one, but
- * not recorded: the probe writes its own row, and would otherwise count
- * twice.
+ * arrived. The status monitor's check is logged like any call and named as
+ * one, and not recorded: the monitor writes its own row, which would
+ * otherwise count twice. A proven check also reads nothing from the cache,
+ * so it reaches the registry (`middleware/probe.ts`).
  */
 function requestDeps(c: Context, transport: Transport, mount: string): ToolDeps {
-  const probe = c.req.header(PROBE_HEADER) !== undefined;
+  const probe = c.get("probe");
 
   return {
     ...shared,
-    logger: c.get("logger").child({ transport, mount, ...(probe ? { probe: true } : {}) }),
+    cache: probe === "fresh" ? writeOnlyCache(shared.cache) : shared.cache,
+    logger: c.get("logger").child({ transport, mount, ...(probe ? { probe } : {}) }),
     transport,
     mount,
     requestId: c.get("requestId"),

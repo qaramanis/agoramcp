@@ -7,6 +7,12 @@ export const etSource = defineSource({
   country: "gr",
   meta,
   tools,
+  // One law by its number and year: a 2 KB answer that cannot be empty.
+  probe: {
+    tool: "search_legislation",
+    input: { kind: "law", number: "4990", year: 2022 },
+    expect: { field: "total", atLeast: 1, detail: "Its law index no longer found ν. 4990/2022: the search is answering empty." },
+  },
   // No `warm`: the index is searched upstream one bounded query at a time,
   // and there is no catalogue small enough to hold whole.
 });

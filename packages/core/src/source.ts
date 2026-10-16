@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Cache } from "./cache.ts";
 import type { Logger } from "./logger.ts";
+import type { ProbeValue, ResolvedProbe, SourceProbe } from "./probe.ts";
 
 /**
  * Provenance and caching policy for one upstream. `license` and `attribution`
@@ -102,6 +103,8 @@ export interface Source {
    * logged and ignored: every tool must work without it.
    */
   warm?: (context: WarmContext) => Promise<void>;
+  /** How the status monitor checks it. Absent: its first tool, with that tool's example. */
+  probe?: SourceProbe;
 }
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -151,7 +154,49 @@ export function defineSource(source: Source): Source {
     }
   }
 
+  // A declared probe is resolved now, so one that names no tool, sends what
+  // the schema refuses, or cannot travel as a query string fails at boot
+  // rather than as a red light on the status page.
+  if (source.probe) probeFor(source);
+
   return source;
+}
+
+/**
+ * The probe the monitor runs for a source: the declared one, or its first
+ * tool with that tool's example, as the monitor did before sources declared
+ * one. A declared probe that cannot be sent throws.
+ */
+export function probeFor(source: Source): ResolvedProbe {
+  const where = `"${source.country}/${source.id}"`;
+  if (!source.probe) {
+    const first = source.tools[0];
+    return { tool: first?.name ?? "", input: (first?.example ?? {}) as Record<string, ProbeValue>, expect: null };
+  }
+
+  const name = source.probe.tool;
+  const tool = source.tools.find((candidate) => candidate.name === name);
+  if (!tool) throw new Error(`The probe of ${where} names "${name}", which is not one of its tools.`);
+
+  const input = (source.probe.input ?? tool.example ?? {}) as Record<string, unknown>;
+  for (const [key, value] of Object.entries(input)) {
+    if (!["string", "number", "boolean"].includes(typeof value)) {
+      throw new Error(
+        `The probe of ${where} sends "${key}" as ${Array.isArray(value) ? "a list" : typeof value}; it is sent as a query string, so every argument must be a string, a number or a boolean.`,
+      );
+    }
+  }
+  const parsed = z.object(tool.inputSchema).safeParse(input);
+  if (!parsed.success) {
+    throw new Error(`The probe of ${where} does not satisfy the schema of "${tool.name}": ${z.prettifyError(parsed.error)}`);
+  }
+
+  const expect = source.probe.expect ?? null;
+  if (expect && (expect.field.trim() === "" || !Number.isFinite(expect.atLeast) || expect.detail.trim() === "")) {
+    throw new Error(`The probe of ${where} has an expectation without a field, a bound or a reason.`);
+  }
+
+  return { tool: tool.name, input: input as Record<string, ProbeValue>, expect };
 }
 
 /** `gr/diavgeia` — the registry key and the mount path suffix. */

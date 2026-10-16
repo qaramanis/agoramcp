@@ -1,5 +1,6 @@
 import {
   defineBundle,
+  probeFor,
   qualifiedToolName,
   sourceKey,
   toolPrefix,
@@ -194,6 +195,8 @@ export function describeRegistry(registry: Registry) {
     endpoint: mcpPath(source.country, source.id),
     api: apiPath(source.country, source.id),
     tools: source.tools.map(describeTool),
+    // What the status monitor asks it, so the web app needs no list of its own.
+    probe: probeFor(source),
   }));
 }
 

@@ -23,6 +23,13 @@ const REVALIDATE_SECONDS = 60;
  */
 const TIMEOUT_MS = 10_000;
 
+/** What `probeFor` puts on the wire: the call the status monitor makes. */
+export type RegistryProbe = {
+  tool: string;
+  input: Record<string, string | number | boolean>;
+  expect: { field: string; atLeast: number; detail: string } | null;
+};
+
 /** What `describeTool` puts on the wire. */
 export type RegistryTool = {
   name: string;
@@ -48,6 +55,8 @@ export type RegistrySource = {
   attribution: string;
   upstreamUrl: string;
   tools: RegistryTool[];
+  /** Absent from a server older than probes. */
+  probe?: RegistryProbe;
 };
 
 /**
