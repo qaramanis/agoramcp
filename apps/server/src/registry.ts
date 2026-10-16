@@ -1,5 +1,6 @@
 import {
   defineBundle,
+  probeFor,
   qualifiedToolName,
   sourceKey,
   toolPrefix,
@@ -7,9 +8,15 @@ import {
   type Bundle,
   type Source,
 } from "@agoramcp/core";
+import { admieSource } from "@agoramcp/source-gr-admie";
 import { athensSource } from "@agoramcp/source-gr-athens";
+import { civilprotectionSource } from "@agoramcp/source-gr-civilprotection";
 import { datagovSource } from "@agoramcp/source-gr-datagov";
 import { diavgeiaSource } from "@agoramcp/source-gr-diavgeia";
+import { ecbSource } from "@agoramcp/source-gr-ecb";
+import { etSource } from "@agoramcp/source-gr-et";
+import { eurostatSource } from "@agoramcp/source-gr-eurostat";
+import { fuelpricesSource } from "@agoramcp/source-gr-fuelprices";
 import { kimdisSource } from "@agoramcp/source-gr-kimdis";
 import { mitosSource } from "@agoramcp/source-gr-mitos";
 import { noaSource } from "@agoramcp/source-gr-noa";
@@ -22,9 +29,15 @@ import { z } from "zod";
  * import it here. The server itself needs no changes.
  */
 const SOURCES: readonly Source[] = [
+  admieSource,
   athensSource,
+  civilprotectionSource,
   datagovSource,
   diavgeiaSource,
+  ecbSource,
+  etSource,
+  eurostatSource,
+  fuelpricesSource,
   kimdisSource,
   mitosSource,
   noaSource,
@@ -182,6 +195,8 @@ export function describeRegistry(registry: Registry) {
     endpoint: mcpPath(source.country, source.id),
     api: apiPath(source.country, source.id),
     tools: source.tools.map(describeTool),
+    // What the status monitor asks it, so the web app needs no list of its own.
+    probe: probeFor(source),
   }));
 }
 

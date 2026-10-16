@@ -24,7 +24,7 @@ export default function Navigation() {
       {/* Outer logo — hands off to the one inside the pill on scroll. */}
       <Link
         href="/"
-        className={`pointer-events-auto flex flex-row items-center gap-2 transition-all duration-300 hover:text-accent hover:opacity-80  ${
+        className={`pointer-events-auto flex flex-row items-center gap-2 transition-opacity duration-300 hover:text-accent hover:opacity-80  ${
           isScrolled ? "md:pointer-events-none md:opacity-0" : "md:opacity-100"
         }`}
       >
@@ -37,7 +37,7 @@ export default function Navigation() {
       <div className="pointer-events-auto flex items-center gap-2">
         <Link
           href="/quickstart"
-          className={`hidden h-7 cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 px-4 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-all duration-300 hover:bg-accent/30 md:flex ${
+          className={`hidden h-7 cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 px-4 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-[opacity,background-color] duration-300 hover:bg-accent/30 md:flex ${
             isScrolled ? "md:pointer-events-none md:opacity-0" : "md:opacity-100"
           }`}
         >

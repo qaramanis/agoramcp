@@ -60,14 +60,14 @@ export default function SectionHero({
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a
                 href={jump.href}
-                className="w-fit rounded-md bg-accent px-6 py-3 text-[12px] font-medium text-background transition-opacity duration-300 hover:opacity-90"
+                className="w-fit rounded-md bg-accent px-6 py-3 text-[12px] font-medium text-background transition-[opacity,scale] duration-[300ms,160ms] ease-out hover:opacity-90 active:scale-[0.97]"
               >
                 {jump.label}
               </a>
               {action && (
                 <Link
                   href={action.href}
-                  className="w-fit rounded-md border border-panel-border px-6 py-3 text-[12px] font-medium text-muted-foreground transition-colors duration-300 hover:border-accent/50 hover:text-foreground"
+                  className="w-fit rounded-md border border-panel-border px-6 py-3 text-[12px] font-medium text-muted-foreground transition-[color,border-color,scale] duration-[300ms,300ms,160ms] ease-out hover:border-accent/50 hover:text-foreground active:scale-[0.97]"
                 >
                   {action.label}
                 </Link>

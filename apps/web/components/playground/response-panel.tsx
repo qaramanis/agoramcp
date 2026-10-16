@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Braces, Check, Copy, Loader2, TriangleAlert } from "lucide-react";
+import { Braces, Loader2, TriangleAlert } from "lucide-react";
+import CopyIcon from "@/components/mcp/copy-icon";
 import JsonView from "./json-view";
 import Panel, { Placeholder } from "./panel";
 
@@ -81,7 +82,7 @@ export default function ResponsePanel({ busy, result, error }: ResponsePanelProp
           <button
             type="button"
             disabled={inert}
-            className="flex h-7 shrink-0 cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 px-3 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-all duration-300 hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-accent/20"
+            className="flex h-7 shrink-0 cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 px-3 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-[background-color,opacity,scale] duration-[300ms,300ms,160ms] ease-out hover:bg-accent/30 enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-accent/20"
           >
             Visualize
           </button>
@@ -148,13 +149,13 @@ function CopyButton({ text }: { text: string }) {
       title={copied ? "Copied" : "Copy response"}
       // Clear of the 6px scrollbar, and translucent so the JSON underneath
       // stays legible as it scrolls past.
-      className={`absolute top-2 right-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded border bg-panel-header/90 backdrop-blur-sm transition-colors duration-300 ${
+      className={`absolute top-2 right-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded border bg-panel-header/90 backdrop-blur-sm transition-[color,border-color,scale] duration-[300ms,300ms,160ms] ease-out active:scale-[0.97] ${
         copied
           ? "border-accent/40 text-accent"
           : "border-panel-border text-muted hover:border-accent/50 hover:text-foreground"
       }`}
     >
-      {copied ? <Check size={13} /> : <Copy size={13} />}
+      <CopyIcon copied={copied} />
     </button>
   );
 }

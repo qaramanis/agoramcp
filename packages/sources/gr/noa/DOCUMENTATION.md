@@ -179,12 +179,36 @@ is **6.7** here; the moment magnitude the global agencies publish for it is
 the other as a discrepancy is. `get_earthquake` says so in its notes on every
 event.
 
-### 5. Nothing found and no such event are the same 204
+### 5. Nothing found, no such event and a silent catalogue are the same 204
 
 The service answers **204 No Content with an empty body** for an empty result,
 and for an id that does not exist. `search_earthquakes` reads that as an empty
-list; `get_earthquake` reads it as `not_found`, because a lookup by id has no
-other meaning.
+list; `get_earthquake` reads it as `not_found`.
+
+It also answers 204 to everything when its catalogue has gone, and nothing else
+about it changes. On **28 September 2026** every window tried, from 2011 to
+that morning, every event id and every filter came back 204 in about 50 ms,
+where a month of 2014 had taken 21 s to scan. `version` still answered, so did
+the station service on the same host, and the Institute's website was listing
+that morning's events. Nothing had failed, so every empty list read as a quiet
+period, and the Samos earthquake came back `not_found`.
+
+So an empty answer is not believed on its own. The adapter then asks for one
+hour that cannot be empty, 11:00 to 12:00 UTC on 30 October 2020, which holds
+the Samos mainshock, and holds the verdict for two minutes, so a run of empty
+answers costs the node one extra request rather than one each. If that hour is
+empty too:
+
+- `search_earthquakes` and `list_recent_earthquakes` still return the empty
+  list, with a note first in `notes`: the catalogue is answering everything
+  with nothing, so the list says nothing about the window. That answer is not
+  cached, where a settled window otherwise would be for a day.
+- `get_earthquake` answers `upstream_unavailable` rather than `not_found`,
+  because it cannot tell a missing id from a missing catalogue.
+
+A check that itself fails proves nothing, and the empty answer then stands as
+it came. A window that closes before the catalogue opens is empty by right, and
+is not checked.
 
 Ids are matched exactly. `noa2026rnaeb` returns the event and `NOA2026RNAEB`
 returns 204 — a wrong-case id looks exactly like a deleted one.
@@ -451,6 +475,13 @@ Details worth knowing:
   returns events at 42.6 km and up.
 - **`orderby=magnitude` with a `limit` gives the N largest**, which is what
   makes "the biggest of the month" a cheap question.
+- **Every query must be bounded in time.** Since July 2026 a query with no
+  `starttime`, `endtime` or `eventid` is refused with the bare Apache 400, and
+  so are the FDSN abbreviations `start` and `end`. The node's own page gives
+  the reason: an unbounded query sorts the whole catalogue. The adapter always
+  sends `starttime` and `endtime`, or an `eventid`.
+- **`catalog` is listed but refused**, with "catalog filter not supported":
+  SeisComP keeps no catalogue name.
 
 ## Caching
 
@@ -467,13 +498,16 @@ worth holding. Verified: a 2011 window took 14.3 s cold and 0.003 s warm.
 Cache keys cover the whole criteria object, so the same question from two
 callers at once collapses into one upstream request.
 
+The verdict on whether the catalogue has gone silent ([§5](#5-nothing-found-no-such-event-and-a-silent-catalogue-are-the-same-204))
+is held for 120 s. While it says silent, an empty search is not cached at all.
+
 ## Errors
 
 | Code | When |
 |---|---|
 | `invalid_input` | A window over 31 days; a start at or after the end; a date that will not parse; a box and a circle together; an incomplete circle; a min above a max; an id that could not be an id. |
-| `not_found` | `get_earthquake` for an id the catalogue does not hold — including a right id in the wrong case. |
-| `upstream_unavailable` | The node timed out or answered 503. The message says how long the window was and that narrowing it is the remedy, because it is. |
+| `not_found` | `get_earthquake` for an id the catalogue does not hold — including a right id in the wrong case — while the catalogue is otherwise answering. |
+| `upstream_unavailable` | The node timed out or answered 503. The message says how long the window was and that narrowing it is the remedy, because it is. Also `get_earthquake` for any id while the catalogue is answering everything with nothing ([§5](#5-nothing-found-no-such-event-and-a-silent-catalogue-are-the-same-204)). |
 | `upstream_error` | A 400, reported as a fault in this adapter rather than in the question, since upstream validates nothing back to us. |
 
 Retries are chosen by window length: windows of two days or less get one retry
@@ -507,3 +541,24 @@ the numbers in it are those measurements rather than estimates.
   after it, with a note.
 - **The licence** is quoted from `https://eida.gein.noa.gr/`, the host serving
   the API. EMSC's terms are quoted from `https://www.seismicportal.eu/terms.html`.
+
+On **28 September 2026** the catalogue went silent, and §5 was built against it:
+
+- **Nothing, everywhere, at once.** One week in June of every year from 2011
+  to 2026, the day of the Samos earthquake, the first fortnight of the 2025
+  Santorini swarm at magnitude 4 and up, a window in 2030: all 204, all in
+  about 50 ms. So were the ids `noa2020vipzs`, `noa2026rnaeb` and `11F00205`,
+  every output format, and the `contributor` and `eventtype` filters.
+  `nodata=404` shows it is SeisComP itself saying "no matching events found".
+- **Not moved, and not a new parameter.** The FDSN data-centre registry and
+  the node's own front page still name this URL, and no other NOA host serves
+  `fdsnws-event`. `catalog` is refused as unsupported, and the July 2026 rule
+  that every query be bounded in time is one the adapter already met.
+- **The data was upstream all along.** The Institute's website catalogue,
+  now served from `bbnet2.gein.noa.gr`, listed events to 08:26 UTC that
+  morning. In that record the proof hour holds two events: the Samos mainshock
+  at 11:51:24 and a magnitude 3.8 at 11:07.
+- **The tools, against the silent service.** Each search returned its empty
+  list with the note, a window before 2011 only its own note, and
+  `get_earthquake` for the Samos earthquake `upstream_unavailable`, where the
+  adapter before §5 had called it `not_found`.

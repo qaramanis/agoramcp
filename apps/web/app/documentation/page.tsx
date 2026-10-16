@@ -23,13 +23,13 @@ export default function DocsPage() {
             <h1 className="text-[2.5rem] leading-[1.2] font-medium tracking-tight text-foreground">
               Where everything is written down.
             </h1>
-            <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
+            <p className="mt-4 font-sans text-[14px] leading-relaxed text-muted-foreground">
               Every part of agoramcp is documented on the page that owns it:
               connecting on the quickstart, the servers on the MCP page, the
               HTTP contract on the API page, the tools themselves in the
               catalogue. Nothing is explained twice.
             </p>
-            <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
+            <p className="mt-4 font-sans text-[14px] leading-relaxed text-muted-foreground">
               What is left over is this page: the words those pages use without
               stopping to define them, the rules that hold across all of them,
               and a straight answer to which one you want.
@@ -85,7 +85,7 @@ function StartHere() {
             {door.title}
             <ArrowUpRight size={12} className="shrink-0" />
           </span>
-          <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">
+          <span className="mt-1 block font-sans text-[14px] leading-relaxed text-muted-foreground">
             {door.body}
           </span>
         </Link>
@@ -97,7 +97,7 @@ function StartHere() {
 function Words() {
   return (
     <Band ariaLabel="Vocabulary" title="The words this site uses.">
-      <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
+      <p className="col-span-8 col-start-1 mt-3 font-sans text-[14px] leading-relaxed text-muted-foreground md:col-span-6">
         A handful of nouns carry most of the documentation. Each one is defined
         here once, and used everywhere else without ceremony.
       </p>
@@ -106,7 +106,7 @@ function Words() {
         {glossary.map((term) => (
           <div key={term.term}>
             <dt className="text-[13px] text-foreground">{term.term}</dt>
-            <dd className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            <dd className="mt-1 font-sans text-[14px] leading-relaxed text-muted-foreground">
               <Ticks text={term.definition} />
             </dd>
             {/* Where the word is used in anger, as a destination rather than a
@@ -133,7 +133,7 @@ function Words() {
 function Rules() {
   return (
     <Band ariaLabel="Conventions" title="Rules that hold everywhere.">
-      <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
+      <p className="col-span-8 col-start-1 mt-3 font-sans text-[14px] leading-relaxed text-muted-foreground md:col-span-6">
         True of every source, every tool and every address, so no other page
         has to say them again.
       </p>
@@ -142,7 +142,7 @@ function Rules() {
         {conventions.map((convention) => (
           <li key={convention.title}>
             <p className="text-[13px] text-foreground">{convention.title}</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 font-sans text-[14px] leading-relaxed text-muted-foreground">
               <Ticks text={convention.body} />
             </p>
           </li>
@@ -160,7 +160,7 @@ function Rules() {
 function SiteMap() {
   return (
     <Band ariaLabel="Site map" title="Which page answers what.">
-      <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
+      <p className="col-span-8 col-start-1 mt-3 font-sans text-[14px] leading-relaxed text-muted-foreground md:col-span-6">
         One job each. If two pages would both answer your question, the one
         listed here is the one that does it properly.
       </p>
@@ -172,10 +172,10 @@ function SiteMap() {
               {route.title}
               <ArrowUpRight size={12} className="shrink-0" />
             </span>
-            <span className="mt-1 block text-[12px] leading-relaxed text-foreground">
+            <span className="mt-1 block font-sans text-[14px] leading-relaxed text-foreground">
               {route.answers}
             </span>
-            <span className="mt-0.5 block text-[12px] leading-relaxed text-muted-foreground">
+            <span className="mt-0.5 block font-sans text-[14px] leading-relaxed text-muted-foreground">
               {route.boundary}
             </span>
           </Link>

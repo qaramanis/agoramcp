@@ -228,6 +228,23 @@ function byteLength(data: unknown): number | undefined {
   }
 }
 
+/**
+ * The cache as the status monitor's proven check sees it: every read a miss,
+ * every write kept. The check reaches the registry instead of reporting what
+ * an earlier call left behind, and what it fetched still saves the next
+ * caller the trip. Calls already in flight for the same key are joined
+ * rather than repeated — `withCache` does that before it reads — and they
+ * are on their way to the registry too.
+ */
+export function writeOnlyCache(cache: Cache): Cache {
+  return {
+    get: async () => undefined,
+    set: (key, value, ttlSeconds) => cache.set(key, value, ttlSeconds),
+    delete: (key) => cache.delete(key),
+    clear: () => cache.clear(),
+  };
+}
+
 interface CountingCache extends Cache {
   counts(): { gets: number; hits: number };
 }

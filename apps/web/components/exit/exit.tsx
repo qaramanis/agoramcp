@@ -26,7 +26,7 @@ export default function Exit() {
             always leads to the same place. */}
         <Link
           href="/quickstart"
-          className="mt-6 w-fit rounded-md bg-accent px-6 py-3 text-[12px] font-medium text-background transition-opacity duration-300 hover:opacity-90"
+          className="mt-6 w-fit rounded-md bg-accent px-6 py-3 text-[12px] font-medium text-background transition-[opacity,scale] duration-[300ms,160ms] ease-out hover:opacity-90 active:scale-[0.97]"
         >
           Get started
         </Link>

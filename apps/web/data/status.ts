@@ -1,139 +1,88 @@
-import { loadHistory, type DayRow } from "@/db/tool-calls";
+import { fallsShort, PROBE_HEADER, type ResolvedProbe } from "@agoramcp/core/probe";
+import { PROXY_HEADER } from "@agoramcp/core/requester";
+import { unstable_cache } from "next/cache";
+import {
+  listRecentProbes,
+  listSourceHistory,
+  listTrafficSinceProbes,
+  type DayRow,
+  type ProbeRecord,
+  type TrafficRecord,
+} from "@/db/tool-calls";
 import { allPath } from "./directory";
 import { greeklish } from "./greeklish";
+import { fetchRegistry, MCP_SERVER_URL, type Registry, type RegistrySource } from "./registry";
 import {
-  fetchRegistry,
-  MCP_SERVER_URL,
-  type Registry,
-  type RegistrySource,
-  type RegistryTool,
-} from "./registry";
+  buildHistory,
+  composeSources,
+  composeVerdict,
+  HISTORY_DAYS,
+  RUN_WINDOW_HOURS,
+  SLOW_MS,
+  TIMEOUT_MS,
+  type Mounted,
+  type SourceHistory,
+  type SourceStatus,
+  type Verdict,
+} from "./status-model";
+
+export * from "./status-model";
 
 /**
- * The status check: one real call per mounted registry, made the way anyone
- * else would make it — a plain HTTP request to the public API, with the
- * arguments the tool itself ships as its example.
+ * The status monitor, and the page that reports it.
  *
- * It deliberately goes through the front door rather than probing each
- * registry directly. What a reader wants to know is whether a question they
- * ask today comes back answered, and that is the whole path: our server, the
- * source's adapter, the registry behind it. A probe that skipped the first two
- * would be measuring something nobody uses.
+ * The monitor is the cron at `/api/cron/status`: every ten minutes it makes
+ * one real call per mounted registry, the way anyone else would — a plain
+ * HTTP request to the public API — and writes what came back as a `probe`
+ * row. Each source declares the call (`probe` on its `defineSource`): its
+ * cheapest live question, and what a working registry cannot answer without.
+ * The request carries the web app's proof, so the server skips its cache and
+ * the question reaches the registry itself.
  *
- * The same check is made twice over: by the page, for the verdict at the top,
- * and by the cron every ten minutes, whose results are kept as rows beside
- * every real call the server answers. The history under each registry is
- * those rows, counted by the day.
+ * The page calls nothing. It reads the monitor's latest rounds, the real
+ * calls recorded since, and the ninety-day history, all from the database,
+ * and holds what it read for a minute — or until the monitor's next round,
+ * which clears it. So a reader sees the newest check within seconds of it
+ * being made, and a thousand readers cost one query.
  */
 
-/** Answering, answering but slowly, or not answering. */
-export type Health = "ok" | "slow" | "down";
+/** The tag the page's read is cached under; the cron clears it after each round. */
+export const STATUS_TAG = "status";
 
-export type SourceStatus = {
-  id: string;
-  country: string;
-  /** Transliterated, as the site writes it. */
-  name: string;
-  /** The source's page in the catalogue. */
-  href: string;
-  /** The tool the check called, so the result is reproducible. */
+/** How long the page holds what it read when no round clears it first. */
+const READ_SECONDS = 60;
+
+/* -------------------------------------------------------------------------- */
+/* The monitor                                                                */
+/* -------------------------------------------------------------------------- */
+
+/** One check, just made. */
+export type CheckResult = {
+  key: string;
   tool: string;
-  /** The address it called, without the host. */
-  path: string;
-  health: Health;
-  /** Round trip in milliseconds, as measured from here. */
+  health: "ok" | "slow" | "down";
   ms: number;
-  /**
-   * The API's own code for what went wrong, or `timeout` / `unreachable`
-   * when our own server did not answer. Null when it answered.
-   */
   code: string | null;
-  /** What went wrong, when something did. */
   detail: string | null;
 };
 
-/** The checks, just made. */
-export type Live = {
-  sources: SourceStatus[];
+export type Round = {
+  checks: CheckResult[];
   /** Why there is nothing: our own server did not answer at all. */
   unavailable: string | null;
 };
 
-export type Status = Live & {
-  /** When the checks ran — the render, since nothing here is cached. */
-  checkedAt: Date;
-  /** The last `HISTORY_DAYS` days of each source, by registry key (`gr/vies`). */
-  history: Record<string, SourceHistory>;
-  /** Why the history is missing, when it is missing for a reason worth showing. */
-  historyUnavailable: string | null;
-};
-
-/** Past this, a call is reported as slow rather than as an answer. */
-export const SLOW_MS = 3_000;
-
-/** Past this, it is reported as no answer at all. */
-export const TIMEOUT_MS = 10_000;
-
-/** How far back the history goes, and how long a row is kept. */
-export const HISTORY_DAYS = 90;
-
 /**
- * Marks a check as ours to the server, which logs it like any call and marks
- * it as a probe — and does not record it, because the cron writes the row
- * itself. The page's own checks send it too: they are looks, not questions.
+ * One check per mounted registry, in parallel: sequential round trips would
+ * make the round as long as the sum of the registries rather than the
+ * slowest of them.
  */
-export const PROBE_HEADER = "x-agoramcp-probe";
-
-/**
- * The tool each source is checked with: a search where the source has one.
- *
- * Two reasons for preferring a search. It exercises the registry's own index
- * rather than one cached record, and it is where each source sets its shortest
- * cache lifetime — so a check is answering for roughly the last few minutes
- * rather than for whenever some record was first fetched. A source with
- * nothing to search gets its cheapest list instead; a lookup by id would send
- * a real identifier upstream on every page view.
- *
- * A source not named here is checked with its first tool, so a new registry
- * appears on this page by being mounted rather than by being added to a list.
- */
-const PROBE_TOOLS: Record<string, string> = {
-  athens: "search_datasets",
-  datagov: "search_datasets",
-  diavgeia: "search_decisions",
-  kimdis: "search_contracts",
-  mitos: "search_procedures",
-  vies: "list_member_states",
-};
-
-export async function loadStatus(): Promise<Status> {
-  // Side by side: the checks and the history read have nothing to say to each other.
-  const [live, history] = await Promise.all([probeAll(), loadHistory(HISTORY_DAYS, SLOW_MS)]);
-
-  return {
-    ...live,
-    checkedAt: new Date(),
-    history: buildHistory(history.rows, live.sources),
-    historyUnavailable: history.unavailable,
-  };
-}
-
-/**
- * One call per mounted registry, in parallel: five sequential round trips
- * would make the caller's own latency the sum of the registries' rather than
- * the slowest of them. What the page's verdict and the cron's rows are both
- * made of.
- */
-export async function probeAll(): Promise<Live> {
+export async function checkAll(): Promise<Round> {
   const result = await fetchRegistry();
-  if (result.registry === null) {
-    return { sources: [], unavailable: result.unavailable };
-  }
+  if (result.registry === null) return { checks: [], unavailable: result.unavailable };
 
-  const sources = await Promise.all(bundled(result.registry).map(check));
-  sources.sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
-
-  return { sources, unavailable: null };
+  const checks = await Promise.all(bundled(result.registry).map(check));
+  return { checks, unavailable: null };
 }
 
 /**
@@ -151,66 +100,80 @@ function bundled(registry: Registry): RegistrySource[] {
   );
 }
 
-async function check(source: RegistrySource): Promise<SourceStatus> {
-  const tool = probeTool(source);
-  const base = {
-    id: source.id,
-    country: source.country,
-    name: greeklish(source.name),
-    href: allPath(source.country, source.id),
-    tool: tool?.name ?? "",
-  };
+/** The source's own probe, or — from a server older than probes — its first tool and that tool's example. */
+function probeOf(source: RegistrySource): ResolvedProbe | null {
+  if (source.probe) return source.probe;
+  const first = source.tools[0];
+  if (!first) return null;
+  const input = Object.fromEntries(
+    Object.entries(first.example ?? {}).filter((entry): entry is [string, string | number | boolean] =>
+      ["string", "number", "boolean"].includes(typeof entry[1]),
+    ),
+  );
+  return { tool: first.name, input, expect: null };
+}
 
-  // A source with no tools cannot be asked anything, so there is nothing to
-  // report about it either way.
-  if (!tool) {
-    return {
-      ...base,
-      path: source.api,
-      health: "down",
-      ms: 0,
-      code: "no_tools",
-      detail: "This source declares no tools.",
-    };
+/**
+ * The headers that make a call the monitor's. The mark alone is only that:
+ * the server skips its cache for it, and leaves it out of the history, only
+ * beside `PROXY_SECRET` — the proof the /live proxy already sends.
+ */
+function probeHeaders(): Record<string, string> {
+  const secret = process.env.PROXY_SECRET?.trim();
+  return { accept: "application/json", [PROBE_HEADER]: "1", ...(secret ? { [PROXY_HEADER]: secret } : {}) };
+}
+
+async function check(source: RegistrySource): Promise<CheckResult> {
+  const probe = probeOf(source);
+  const key = source.key;
+
+  // A source with no tools cannot be asked anything, so it cannot be up.
+  if (!probe) {
+    return { key, tool: "", health: "down", ms: 0, code: "no_tools", detail: "This source declares no tools." };
   }
 
   const query = new URLSearchParams(
-    Object.entries(tool.example ?? {}).map(([key, value]) => [key, String(value)]),
+    Object.entries(probe.input).map(([name, value]) => [name, String(value)]),
   ).toString();
-  const path = `${source.api}/${tool.name}`;
   const started = Date.now();
 
   try {
-    const response = await fetch(`${MCP_SERVER_URL}${path}${query ? `?${query}` : ""}`, {
-      headers: { accept: "application/json", [PROBE_HEADER]: "1" },
-      // Never cached here: a status page that reads a cached check is
-      // reporting the past while dating it now.
+    const response = await fetch(`${MCP_SERVER_URL}${source.api}/${probe.tool}${query ? `?${query}` : ""}`, {
+      headers: probeHeaders(),
       cache: "no-store",
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const ms = Date.now() - started;
 
-    if (!response.ok) return { ...base, path, health: "down", ms, ...(await reason(response)) };
-    return { ...base, path, health: ms > SLOW_MS ? "slow" : "ok", ms, code: null, detail: null };
+    if (!response.ok) return { key, tool: probe.tool, health: "down", ms, ...(await reason(response)) };
+
+    if (probe.expect && fallsShort(await dataOf(response), probe.expect)) {
+      return { key, tool: probe.tool, health: "down", ms, code: "empty", detail: probe.expect.detail };
+    }
+    return { key, tool: probe.tool, health: ms > SLOW_MS ? "slow" : "ok", ms, code: null, detail: null };
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "TimeoutError";
     return {
-      ...base,
-      path,
+      key,
+      tool: probe.tool,
       health: "down",
       ms: Date.now() - started,
       code: timedOut ? "timeout" : "unreachable",
-      detail: timedOut
-        ? `No answer within ${TIMEOUT_MS / 1_000} seconds.`
-        : "agoramcp could not be reached.",
+      detail: timedOut ? `No answer within ${TIMEOUT_MS / 1_000} seconds.` : "agoramcp could not be reached.",
     };
   }
 }
 
-/** The named tool, or the source's first — see `PROBE_TOOLS`. */
-function probeTool(source: RegistrySource): RegistryTool | undefined {
-  const named = PROBE_TOOLS[source.id];
-  return source.tools.find((tool) => tool.name === named) ?? source.tools[0];
+/**
+ * The `data` of an answer, as the API's envelope carries it, or undefined
+ * when the body will not read — which then falls short of any expectation.
+ */
+async function dataOf(response: Response): Promise<unknown> {
+  try {
+    return ((await response.json()) as { data?: unknown }).data;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -232,127 +195,85 @@ async function reason(response: Response): Promise<{ code: string; detail: strin
   return { code: `http_${response.status}`, detail: `The API answered ${response.status}.` };
 }
 
-export const HEALTH_LABELS: Record<Health, string> = {
-  ok: "Answering",
-  slow: "Answering slowly",
-  down: "Not answering",
-};
+/* -------------------------------------------------------------------------- */
+/* The page                                                                   */
+/* -------------------------------------------------------------------------- */
 
-/** One line over the list: what the checks add up to. */
-export function summarise(sources: SourceStatus[]): string {
-  const down = sources.filter((source) => source.health === "down").length;
-  const slow = sources.filter((source) => source.health === "slow").length;
-
-  if (sources.length === 0) return "Nothing is mounted to check.";
-  if (down === sources.length) return "No registry answered.";
-  if (down > 0) {
-    return `${down} of ${sources.length} ${down === 1 ? "registry is" : "registries are"} not answering.`;
-  }
-  if (slow > 0) {
-    return `Every registry answered, ${slow === 1 ? "one" : slow} slower than usual.`;
-  }
-  return sources.length === 1
-    ? "The registry answered."
-    : `All ${sources.length} registries answered.`;
-}
-
-/** "14:32 UTC on 7 September 2026" — no locale, no relative time to go stale. */
-export function formatChecked(at: Date): string {
-  const time = at.toISOString().slice(11, 16);
-  const day = at.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-  return `${time} UTC on ${day}`;
-}
-
-/*
- * The history: the rows under each registry, shaped for a strip of days.
- */
-
-/** How a day went — or `none`, when nothing was asked that day. */
-export type DayState = "ok" | "degraded" | "outage" | "none";
-
-export type DayHealth = {
-  /** `YYYY-MM-DD`, UTC. */
-  date: string;
-  total: number;
-  /** Calls the registry did not answer. */
-  failed: number;
-  state: DayState;
-};
-
-export type SourceHistory = {
-  /** One per day of the window, oldest first, today last. */
-  days: DayHealth[];
-  /** The share of the window's calls that were answered, 0 to 1; null with no calls. */
-  uptime: number | null;
+type MonitorRead = {
+  checks: ProbeRecord[];
+  traffic: TrafficRecord[];
+  days: DayRow[];
 };
 
 /**
- * The share of a day's calls not answered past which the day is degraded,
- * and past which it is an outage. One failure among the probe's own hundred
- * and forty a day is a blip; one in four is not.
+ * Everything the page needs from the database, in three queries side by
+ * side, held for a minute and dropped as soon as the monitor records a new
+ * round. JSON throughout: times are ISO strings, since the cache keeps JSON.
  */
-export const DEGRADED_SHARE = 0.01;
-export const OUTAGE_SHARE = 0.25;
+const readMonitor = unstable_cache(
+  async (): Promise<MonitorRead> => {
+    const [checks, traffic, days] = await Promise.all([
+      listRecentProbes(RUN_WINDOW_HOURS),
+      listTrafficSinceProbes(RUN_WINDOW_HOURS),
+      listSourceHistory(HISTORY_DAYS, SLOW_MS),
+    ]);
+    return { checks, traffic, days };
+  },
+  ["status-monitor"],
+  { tags: [STATUS_TAG], revalidate: READ_SECONDS },
+);
 
-/**
- * Every live source's window, filled day by day from the rows: a source with
- * no rows still gets its strip, all `none`, rather than no strip. Keyed the
- * way the rows are — the registry key — because that is what the server
- * writes and what survives a rename.
- */
-export function buildHistory(
-  rows: DayRow[],
-  sources: SourceStatus[],
-  now: Date = new Date(),
-): Record<string, SourceHistory> {
-  const dates = lastDays(HISTORY_DAYS, now);
+export type Status = {
+  verdict: Verdict;
+  sources: SourceStatus[];
+  /** The last `HISTORY_DAYS` days of each source, by registry key (`gr/vies`). */
+  history: Record<string, SourceHistory>;
+  /** Why the monitor's record could not be read, when it could not. */
+  monitorUnavailable: string | null;
+  /** Why the list of registries came from the record rather than the server, when it did. */
+  catalogueUnavailable: string | null;
+};
 
-  const byKey = new Map<string, Map<string, DayRow>>();
-  for (const row of rows) {
-    const own = byKey.get(row.source) ?? new Map<string, DayRow>();
-    own.set(row.day, row);
-    byKey.set(row.source, own);
-  }
+export async function loadStatus(now: Date = new Date()): Promise<Status> {
+  const [registry, read] = await Promise.all([fetchRegistry(), readMonitorSafely()]);
+  const { checks, traffic, days } = read.data;
 
-  const history: Record<string, SourceHistory> = {};
-  for (const source of sources) {
-    const key = `${source.country}/${source.id}`;
-    const own = byKey.get(key);
-    let total = 0;
-    let failed = 0;
+  // The registries are named and linked from the server's own list. Should it
+  // not answer, the record still knows which registries it has been checking.
+  const mounted: Mounted[] = registry.registry
+    ? bundled(registry.registry).map((source) => ({
+        key: source.key,
+        id: source.id,
+        country: source.country,
+        name: greeklish(source.name),
+        href: allPath(source.country, source.id),
+      }))
+    : [...new Set(checks.map((entry) => entry.source))].map((key) => {
+        const [country = "", id = ""] = key.split("/");
+        return { key, id, country, name: key, href: allPath(country, id) };
+      });
 
-    const days = dates.map((date) => {
-      const row = own?.get(date);
-      const dayTotal = row?.total ?? 0;
-      const dayFailed = row?.failed ?? 0;
-      total += dayTotal;
-      failed += dayFailed;
-      return { date, total: dayTotal, failed: dayFailed, state: stateOf(dayTotal, dayFailed) };
-    });
-
-    history[key] = { days, uptime: total === 0 ? null : (total - failed) / total };
-  }
-
-  return history;
+  const sources = composeSources(mounted, checks, traffic, now);
+  return {
+    verdict: read.unavailable
+      ? { state: "none", summary: "The monitor's record could not be read.", checkedAt: null, nextCheckBy: null }
+      : composeVerdict(sources, checks, now),
+    sources,
+    history: buildHistory(days, mounted.map((source) => source.key), now),
+    monitorUnavailable: read.unavailable,
+    catalogueUnavailable: registry.registry ? null : registry.unavailable,
+  };
 }
 
-function stateOf(total: number, failed: number): DayState {
-  if (total === 0) return "none";
-  const share = failed / total;
-  if (share >= OUTAGE_SHARE) return "outage";
-  if (share >= DEGRADED_SHARE) return "degraded";
-  return "ok";
-}
-
-/** `YYYY-MM-DD` for each of the last `count` UTC days, oldest first, today last. */
-function lastDays(count: number, now: Date): string[] {
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  return Array.from({ length: count }, (_, index) =>
-    new Date(today - (count - 1 - index) * 86_400_000).toISOString().slice(0, 10),
-  );
+/** A database that cannot be reached is a sentence on the page, not a crash. */
+async function readMonitorSafely(): Promise<{ data: MonitorRead; unavailable: string | null }> {
+  try {
+    return { data: await readMonitor(), unavailable: null };
+  } catch (error) {
+    console.error("status: database unavailable", error);
+    return {
+      data: { checks: [], traffic: [], days: [] },
+      unavailable: "The monitor's record could not be read just now, so there is nothing to report.",
+    };
+  }
 }

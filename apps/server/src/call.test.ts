@@ -1,8 +1,8 @@
-import { NotFoundError, UpstreamTimeoutError, createLogger, createMemoryCache, defineSource, defineTool, type LogFields } from "@agoramcp/core";
+import { NotFoundError, UpstreamTimeoutError, createLogger, createMemoryCache, defineSource, defineTool, withCache, type LogFields } from "@agoramcp/core";
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { z } from "zod";
-import { callTool, type ToolDeps, type ToolCallRecord } from "./call.ts";
+import { callTool, writeOnlyCache, type ToolDeps, type ToolCallRecord } from "./call.ts";
 
 /**
  * The privacy page promises that no argument is logged, so these pin down
@@ -131,5 +131,32 @@ describe("the call's deadline", () => {
     await assert.rejects(callTool(source, stuck, {}, deps(false, lines, records, 10_000), caller.signal), (error) => (error as Error).name === "AbortError");
     assert.ok(lines.some((line) => line.message === "tool.aborted"));
     assert.equal(records.length, 0);
+  });
+});
+
+describe("the monitor's proven check", () => {
+  /** Counts how often it reaches its registry; a second call inside the TTL is answered from the cache. */
+  let upstream = 0;
+  const counted = defineTool({
+    name: "counted",
+    title: "Counted",
+    description: "Test tool.",
+    inputSchema: {},
+    handler: (_input, context) => withCache(context.cache, "test:counted", 60, async () => ({ fetch: ++upstream })),
+  });
+  const cachedSource = defineSource({ ...source, tools: [counted] });
+
+  test("reads nothing from the cache, so it reaches the registry, and leaves its answer for the next caller", async () => {
+    const shared = createMemoryCache();
+    const call = (cache: ToolDeps["cache"]) =>
+      callTool(cachedSource, counted, {}, { ...deps(false, [], []), cache }, new AbortController().signal);
+
+    assert.deepEqual(await call(shared), { fetch: 1 });
+    // An ordinary call inside the TTL is the cached answer.
+    assert.deepEqual(await call(shared), { fetch: 1 });
+    // The check is not: it asks again.
+    assert.deepEqual(await call(writeOnlyCache(shared)), { fetch: 2 });
+    // And what it fetched is what the next caller gets.
+    assert.deepEqual(await call(shared), { fetch: 2 });
   });
 });

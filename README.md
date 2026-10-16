@@ -136,8 +136,8 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
      project's production URL. The first is inlined at build time, so redeploy
      `web` if that URL ever changes. Plus `DATABASE_URL` (Neon's pooled
      string) and `REQUEST_HASH_SALT` for `/country` — see [Database](#database) —
-     `PROXY_SECRET` for the `/live` proxy, and `CRON_SECRET` for the status
-     cron.
+     `PROXY_SECRET` for the `/live` proxy and the status monitor, and
+     `CRON_SECRET` for the status cron.
 
 One dev dependency exists for Vercel's sake: `apps/server` lists `undici-types`
 because Vercel type-checks the entry with a resolver that does not follow
@@ -224,9 +224,15 @@ per-source code.
    is one runnable call, checked against the schema at boot: the landing
    page's live console builds its form from the schema and prefills it from
    the example, so a tool is described once and appears there by itself.
-4. `index.ts` — `defineSource({ id, country, meta, tools })`. Add a `warm`
-   hook if the source's first call would otherwise pay for something slow, such
-   as a whole register: the server runs it once at boot, in the background.
+4. `index.ts` — `defineSource({ id, country, meta, tools, probe })`. `probe`
+   is how the status monitor checks the source: its cheapest live question
+   (a search or a list, never a lookup of someone's record), the arguments as
+   strings, numbers or booleans, and an `expect` — a field of the answer that
+   a working registry cannot leave empty — where one exists. It is checked
+   against the tool's schema at boot; left out, the monitor calls the first
+   tool with its example. Add a `warm` hook if the source's first call would
+   otherwise pay for something slow, such as a whole register: the server
+   runs it once at boot, in the background.
 5. Add the package to `apps/server/package.json` and import it in
    `apps/server/src/registry.ts`. It joins its country's server automatically;
    `UNBUNDLED` in that file is the opt-out.
@@ -257,8 +263,10 @@ back as `x-request-id`, so one request's lines can be pulled together in any
 log viewer. A caller's own `x-request-id` is kept when it looks like an id (up
 to 128 letters, digits and `._:-`), so their logs and ours join up; anything
 else is replaced with a fresh UUID. Lines from a call carry `transport` (`mcp` or `api`) and `mount`
-(`gr` for the country server, `gr/vies` for a source's own), and `probe: true`
-when the status page's check made the call.
+(`gr` for the country server, `gr/vies` for a source's own), and `probe`
+when the status monitor made the call: `fresh` when it carried the web app's
+proof and skipped the cache, `marked` on a server with no `PROXY_SECRET` to
+check the proof against (see [Call records](#call-records-and-the-status-history)).
 
 | event | level | when |
 |---|---|---|
@@ -270,6 +278,7 @@ when the status page's check made the call.
 | `request.rejected` | warn | The MCP transport refused the request itself — the wrong `Accept` or `Content-Type`, a body that is not JSON — and its own 4xx was sent; or the body was a JSON-RPC batch, which is refused with a 400 before it reaches the transport (`batch` is how many messages it held). |
 | `mcp.protocol_error` | warn | The MCP SDK reported an error of its own, such as a reply it could not send. |
 | `record.failed` | warn | A call's outcome could not be written to the database (below). |
+| `probe.unproven` | warn | A call carried the monitor's `x-agoramcp-probe` mark without the proof. It is treated as an ordinary call: cached, and recorded. |
 | `tool.start` | debug | The handler is about to run, with the argument names (the values with `LOG_TOOL_ARGS=true`). Off at the default level; its one use is to leave a trace of a call the host kills before the outcome line is written. |
 
 `LOG_LEVEL` sets the threshold (`debug`, `info`, `warn`, `error`, `silent`).
@@ -308,14 +317,33 @@ error's code when it did not, the duration and the request id. Never the
 arguments and never an address. The insert runs off the response path and a
 failure is a `record.failed` line, never a failed call.
 
-`/status` reads those rows as each source's last 90 days. Beside the real
-calls, the web app's cron (`apps/web/vercel.json`, every ten minutes, at
-`/api/cron/status`, let in by `CRON_SECRET`) makes one call per registry
-through the public API the way the page itself does and writes the outcome as
-a `probe` row, so a quiet day is not a blank one and a stretch when the server
-itself was unreachable is recorded as one. The same cron drops rows older than
-90 days. A check the page or the cron makes is sent with `x-agoramcp-probe`,
-which the server logs but does not record — the cron writes that row itself.
+The status monitor is the web app's cron (`apps/web/vercel.json`, every ten
+minutes, at `/api/cron/status`, let in by `CRON_SECRET`). Each round it asks
+every mounted registry the `probe` its source declares, through the public API
+as anyone would, and writes the outcome as a `probe` row — with `detail`, the
+API's own sentence for a failure — so a quiet day is not a blank one and a
+stretch when the server itself was unreachable is recorded as one. A probe
+whose answer falls short of the source's `expect` (no earthquakes in the last
+day, no exchange rate) is recorded as not answering, under the code `empty`.
+The cron then drops rows older than 90 days and clears the page's cached read.
+
+The monitor's call carries `x-agoramcp-probe` and, as proof that it is the web
+app, `x-agoramcp-proxy: $PROXY_SECRET`. With the proof the server reads
+nothing from its cache for that call — so the check reaches the registry rather
+than an earlier caller's answer — still writes what it fetched for the next
+caller, logs the call with `probe: fresh` and does not record it, since the
+monitor writes that row itself. The mark without the proof, on a server that
+has the secret, is an ordinary call: cached, recorded, and logged as
+`probe.unproven`. Set `PROXY_SECRET` on both apps.
+
+`/status` calls nothing. It reads, from `tool_calls`, the last 24 hours of the
+monitor's rounds (the newest is the verdict; the unbroken run behind it says
+since when), the real calls recorded since each registry's latest check, and
+the 90-day history, and holds that read for a minute or until the next round
+clears it. A registry with no check in 25 minutes is shown as not checked
+recently, with what the monitor last saw; a round in which the server itself
+did not answer is reported as that. The page's rules are pure functions in
+`apps/web/data/status-model.ts`, tested with the rest (`pnpm test`).
 
 ## Licensing
 

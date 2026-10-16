@@ -29,6 +29,47 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.38",
+    title: "Serve /status from recorded probe rounds, declare probes per source, and bypass the cache for authenticated probes",
+    body: [
+      "`/status` called all 13 registries on every view, so each visitor waited for the slowest and a crawler could hammer them. It now calls nothing: it reads the monitor's latest round, the real calls recorded since, and the 90-day history from `tool_calls`, holds the read for a minute, and the cron clears it after each round, so a new round is on the page within seconds. Each registry shows since when its state has held and what real calls have said since its check; a registry not checked for 25 minutes, or a round in which our own server did not answer, is said as such.",
+      "Each source now declares its own `probe`: its cheapest live call and what its answer cannot be without, checked at boot and published on `GET /`, so the web app keeps no list of its own. NOA's never-empty rule became one of these, and every other source has one. The monitor's call carries `PROXY_SECRET` as proof, and the server then reads nothing from its cache for it, so a check reaches the registry instead of an earlier answer, and still caches what it fetched. A forged mark is recorded like any call and logged as `probe.unproven`.",
+      "A migration adds `detail` to `tool_calls`, the reason a check failed, and a partial index for the latest checks; run it before deploying, and set `PROXY_SECRET` on both projects. The page's rules are pure and tested in `data/status-model.ts`, and `pnpm test` now runs the web app's tests too: 226 pass. The page, the cron and the migration ran end to end against a local Postgres, through a healthy round, a silent registry, failed calls, our server down and a stopped monitor.",
+    ],
+    date: "2026-10-16",
+  },
+  {
+    version: "v.1.1.37",
+    title: "Add six Greek sources: the Government Gazette, Eurostat, the ECB, fuel prices, ΑΔΜΗΕ and the fire-risk map",
+    body: [
+      "Greece now mounts 13 sources and 74 tools. `gr/et` searches the law index and every ΦΕΚ issue through search.et.gr's backend, follows which acts amended a law, and reads an issue's text. `gr/eurostat` and `gr/ecb` give the EU's harmonised statistics and the ECB's series with Greece as the default, and euro reference rates. `gr/fuelprices` reads the observatory's daily bulletins into pump prices for all 51 prefectures since 2017, and the weekly split into refinery price, taxes and margin. `gr/admie` lists and reads the transmission operator's 74 kinds of file, with the day's load and production by fuel since 2011 and tomorrow's forecast. `gr/civilprotection` reads the daily fire-risk map image into a category for each of 148 areas, by area or at a point.",
+      "ΑΔΜΗΕ's daily files are legacy .xls, so the package carries its own .xls and .xlsx readers; the .xls reader agrees with xlrd on every cell of 14 files from 2011 to 2026. The fuel bulletins are read by position, which survives blank cells, split numbers and the broken Greek font of 2018 to 2020 (61 bulletins, all 51 prefectures each). The fire-risk map is checked against its template before it is read, and gave no mismatch over the 2026 season.",
+      "The landing grid has four new logos: Ethniko Typografeio, Eurostat, ECB and the Ministry of Development for fuelprices.gr. 67 new offline tests (203 in all) pass, and every new tool answered against the live upstreams over the HTTP API and MCP. The fire-risk map is CC BY-NC-SA with a no-alteration clause, and the gazette portal's terms reserve its content; both licence lines say so.",
+    ],
+    date: "2026-10-16",
+  },
+  {
+    version: "v.1.1.36",
+    title: "Show every page before its script loads, fit the site to phones, and tighten its motion",
+    body: [
+      "Every page faded in from a client effect that held it at zero until the JavaScript had loaded, so a slow connection saw nothing under the nav and a reader without JavaScript saw nothing at all. `app/template.tsx` now fades with CSS, `starting:opacity-0`, from the first paint, in 200 ms. The nav's search results no longer fade up from nothing on every keystroke, and a new panel fades in 200 ms rather than 600.",
+      "`ease-out` and `ease-in-out` are stronger curves, set once in `globals.css`. Eleven buttons shrink to 97% while pressed, the mobile menu slides on an iOS sheet curve, the use-case tabs switch in 300 ms rather than 600, every `transition-all` names its properties, and the footer's sheen holds still under reduced motion. The copy icon cross-fades into a tick, and the landing page's source squares rise into place a diagonal at a time the first time they scroll into view.",
+      "On a phone the hero's eclipse is hidden, where it widened the page to 585 px and pushed the menu button off screen. The hero is `100svh` tall, the browser bar takes the site's `#0a0a0a`, a tap no longer flashes grey, and the search and playground fields are 16 px so iOS Safari does not zoom into them. The paragraphs of /documentation, the use cases, /privacy and /terms are set in Geist at 14 px, with headings, labels, links and inline code left in mono, and the last source square reads \"more coming soon\".",
+    ],
+    date: "2026-10-15",
+  },
+  {
+    version: "v.1.1.35",
+    title: "Stop reading NOA's silent catalogue as a quiet day, or as answering",
+    body: [
+      "On 28 September NOA's FDSN event service answered every query with an empty 204: every window from 2011 to that morning, every event id, every format and filter, in about 50 ms where a month of 2014 used to take 21 s to scan. It is up (`version` answers, and so does the station service on the same host), it has not moved (the FDSN registry and the node's own page still name it, and no other NOA host serves `fdsnws-event`), and no parameter brings anything back: `catalog` is refused as unsupported, and the July 2026 rule that every query be bounded in time is one the adapter already met. The Institute's website catalogue listed events to that morning, so the outage is the service's, not a quiet week. `search_earthquakes` and `list_recent_earthquakes` returned `count: 0` with no note, `get_earthquake` called the Samos earthquake `not_found`, and `/status` showed NOA as answering.",
+      "`packages/sources/gr/noa` no longer believes an empty answer on its own. It then asks for 11:00 to 12:00 UTC on 30 October 2020, an hour that holds the Samos mainshock and cannot be empty while the catalogue answers at all, and holds the verdict for two minutes, so a run of empty answers costs the node one extra request rather than one each. If that hour is empty too, the searches return their empty list with a first note saying the catalogue is answering everything with nothing, and do not cache it, where a settled window would otherwise be held for a day after the service came back; `get_earthquake` answers a retryable `upstream_unavailable` instead of `not_found`. A check that fails proves nothing, and a window before 2011 is not checked. Against the live service, every search came back with the note and the Samos lookup with `upstream_unavailable`.",
+      "`/status` now checks NOA with `list_recent_earthquakes` and its own example, the last 24 hours with nothing filtered, and reads the answer: one with no earthquakes in it is reported as not answering, under the code `empty`, and the cron records it as a failure. In the Institute's own record the quietest 24 hours since 2018 held ten events, where the old check, a week at magnitude 3 and up, asks a question that went five days without an answer in September. `NEVER_EMPTY` in `data/status.ts` holds the rule for any source that can fail this way, and the page's method section says so. Run against the live registries, the check reports NOA as not answering and the other six as answering.",
+      "Six new tests in the NOA package put a stand-in for the node in place of `fetch` before the client loads: a silent catalogue flagged and not held, a quiet window believed and held, no check when there are events or the window predates the catalogue, a failed check proving nothing, `not_found` against `upstream_unavailable`, and the note on `list_recent_earthquakes`. Taking out the fix fails them. The source's `DOCUMENTATION.md` says all of this in section 5, the errors, caching and verification, with two upstream rules found on the way, and `docs/gr-documentation.md` has it in a sentence.",
+    ],
+    date: "2026-09-28",
+  },
+  {
     version: "v.1.1.34",
     title: "Put a deadline on every tool call and bound the PDF reads",
     body: [

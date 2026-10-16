@@ -50,7 +50,9 @@ export {
 } from "./bundle.ts";
 export type { Bundle, BundleMeta } from "./bundle.ts";
 
-export { defineSource, defineTool, missingEnv, sourceKey, ttlFor } from "./source.ts";
+export { defineSource, defineTool, missingEnv, probeFor, sourceKey, ttlFor } from "./source.ts";
+export { fallsShort, PROBE_HEADER } from "./probe.ts";
+export type { ProbeExpectation, ProbeValue, ResolvedProbe, SourceProbe } from "./probe.ts";
 export type {
   AnySourceTool,
   Source,

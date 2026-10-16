@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import CopyIcon from "./copy-icon";
 
 /** Two seconds of acknowledgement, then back — the playground's timing. */
 const COPIED_MS = 2_000;
@@ -64,13 +64,13 @@ export default function CodeBlock({ code, label, wrap = false }: CodeBlockProps)
         onClick={copy}
         aria-label={copied ? `${label} copied` : `Copy ${label}`}
         title={copied ? "Copied" : "Copy"}
-        className={`absolute top-2 right-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded border bg-panel-header/90 backdrop-blur-sm transition-colors duration-300 ${
+        className={`absolute top-2 right-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded border bg-panel-header/90 backdrop-blur-sm transition-[color,border-color,scale] duration-[300ms,300ms,160ms] ease-out active:scale-[0.97] ${
           copied
             ? "border-accent/40 text-accent"
             : "border-panel-border text-muted hover:border-accent/50 hover:text-foreground"
         }`}
       >
-        {copied ? <Check size={13} /> : <Copy size={13} />}
+        <CopyIcon copied={copied} />
       </button>
     </div>
   );

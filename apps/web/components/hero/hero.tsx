@@ -14,16 +14,23 @@ export default function Hero() {
     // No overflow-hidden: clipping the canvas to the section cuts the corona
     // off at the hero's edges. `body` already carries overflow-x: hidden, so
     // the half of the disc that sits past the viewport costs no scrollbar.
-    <section className="relative h-screen w-full">
+    // `svh`, the viewport with the phone's browser bars showing: `100vh` is
+    // the one with them hidden, so the hero ran under the bottom bar.
+    <section className="relative h-svh w-full">
       {/* Both layers fade out over the last third of the hero. The canvas is
           opaque — it paints its own near-black — so without this it ends on a
           hard horizontal line exactly where the next section starts. Masking
           the wrapper rather than the canvas keeps this fade and the canvas's
           own left-edge fade as separate, multiplying masks, which needs no
-          mask-composite support. */}
+          mask-composite support.
+
+          Not on a phone. The glow and the canvas both reach half a screen
+          past the right edge, and a mobile browser widens the page to fit
+          them, whatever body's overflow says: the whole site is zoomed out
+          and the menu button lands off screen. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 hidden md:block"
         style={{ maskImage: BOTTOM_FADE, WebkitMaskImage: BOTTOM_FADE }}
       >
         {/* Doubles as the WebGL fallback: if the canvas never paints, this
@@ -70,13 +77,13 @@ export default function Hero() {
         <div className="col-span-12 mt-6 flex flex-wrap items-center gap-3 md:col-span-5">
           <Link
             href="/quickstart"
-            className="w-fit rounded-md bg-accent px-6 py-3 text-[12px] font-medium text-background transition-opacity duration-300 hover:opacity-90"
+            className="w-fit rounded-md bg-accent px-6 py-3 text-[12px] font-medium text-background transition-[opacity,scale] duration-[300ms,160ms] ease-out hover:opacity-90 active:scale-[0.97]"
           >
             Get started
           </Link>
           <Link
             href="/country"
-            className="w-fit rounded-md border border-panel-border px-6 py-3 text-[12px] font-medium text-muted-foreground transition-colors duration-300 hover:border-accent/50 hover:text-foreground"
+            className="w-fit rounded-md border border-panel-border px-6 py-3 text-[12px] font-medium text-muted-foreground transition-[color,border-color,scale] duration-[300ms,300ms,160ms] ease-out hover:border-accent/50 hover:text-foreground active:scale-[0.97]"
           >
             Request a country
           </Link>

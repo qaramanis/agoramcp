@@ -42,6 +42,17 @@ export const datagovSource = defineSource({
   country: "gr",
   meta,
   tools,
+  // One format's datasets, one record back: the index searched live, and a
+  // count that cannot fall to nothing.
+  probe: {
+    tool: "search_datasets",
+    input: { format: "CSV", size: 1 },
+    expect: {
+      field: "total",
+      atLeast: 1_000,
+      detail: "Its catalogue counted fewer than 1,000 CSV datasets, where it holds over 5,600: the index is answering empty.",
+    },
+  },
   // The register of bodies takes upstream ~8 s to produce. Fetched now, the
   // first list_organizations answers at once instead of paying for it.
   async warm(context) {

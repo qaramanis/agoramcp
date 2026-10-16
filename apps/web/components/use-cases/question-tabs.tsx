@@ -14,8 +14,11 @@ const EXITS = (slug: string) => [
   { title: "Try a call in the browser", href: "/live" },
 ];
 
-/** One leg of the panel's fade — the page fade's timing, `duration-300`. */
-const FADE_MS = 300;
+/**
+ * One leg of the panel's fade, the panel's `duration-150`. Out, then in, so a
+ * new question is in view in twice this.
+ */
+const FADE_MS = 150;
 
 /**
  * The four questions on the left, and the selected one worked through on the
@@ -103,7 +106,7 @@ export default function QuestionTabs({ header }: { header: ReactNode }) {
                 className="group cursor-pointer py-2 text-left"
               >
                 <span
-                  className={`flex items-center gap-1 text-[13px] transition duration-500 ease-out ${
+                  className={`flex items-center gap-1 text-[13px] transition duration-250 ease-out ${
                     selected
                       ? "translate-x-0 text-accent"
                       : "-translate-x-4 text-muted-foreground group-hover:text-foreground"
@@ -116,7 +119,7 @@ export default function QuestionTabs({ header }: { header: ReactNode }) {
                   <ChevronRight
                     size={12}
                     aria-hidden
-                    className={`shrink-0 transition-opacity duration-500 ease-out ${
+                    className={`shrink-0 transition-opacity duration-250 ease-out ${
                       selected ? "opacity-100" : "opacity-0"
                     }`}
                   />
@@ -146,7 +149,7 @@ export default function QuestionTabs({ header }: { header: ReactNode }) {
               role="tabpanel"
               id={`question-${entry.slug}`}
               aria-labelledby={`question-tab-${entry.slug}`}
-              className={`col-start-1 row-start-1 transition-opacity duration-300 ease-out ${
+              className={`col-start-1 row-start-1 transition-opacity duration-150 ease-out ${
                 showing
                   ? visible
                     ? "opacity-100"
