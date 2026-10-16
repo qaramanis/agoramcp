@@ -317,8 +317,9 @@ error's code when it did not, the duration and the request id. Never the
 arguments and never an address. The insert runs off the response path and a
 failure is a `record.failed` line, never a failed call.
 
-The status monitor is the web app's cron (`apps/web/vercel.json`, every ten
-minutes, at `/api/cron/status`, let in by `CRON_SECRET`). Each round it asks
+The status monitor is the web app's cron (`apps/web/vercel.json`, once a day
+at 04:00 UTC — the most the Vercel Hobby plan allows, started some time within
+that hour — at `/api/cron/status`, let in by `CRON_SECRET`). Each round it asks
 every mounted registry the `probe` its source declares, through the public API
 as anyone would, and writes the outcome as a `probe` row — with `detail`, the
 API's own sentence for a failure — so a quiet day is not a blank one and a
@@ -336,13 +337,18 @@ monitor writes that row itself. The mark without the proof, on a server that
 has the secret, is an ordinary call: cached, recorded, and logged as
 `probe.unproven`. Set `PROXY_SECRET` on both apps.
 
-`/status` calls nothing. It reads, from `tool_calls`, the last 24 hours of the
-monitor's rounds (the newest is the verdict; the unbroken run behind it says
-since when), the real calls recorded since each registry's latest check, and
-the 90-day history, and holds that read for a minute or until the next round
-clears it. A registry with no check in 25 minutes is shown as not checked
-recently, with what the monitor last saw; a round in which the server itself
-did not answer is reported as that. The page's rules are pure functions in
+`/status` calls nothing. It reads, from `tool_calls`, each registry's newest
+row of the last 7 days — a real call or the monitor's check, whichever came
+last, is the state shown — with the unbroken run of the same outcome behind it
+(since when), its last 24 hours counted, and the monitor's newest check kept
+apart (the tool and time a reader can repeat). It also reads the 90-day
+history, and holds both reads for a minute or until the next round clears
+them. Only the check is reported as slow: a real call takes as long as the
+question it asked. A failed real call is shown by its code, since the server
+does not record messages, which may repeat the arguments. A registry with
+nothing in 26 hours is shown as not asked recently, with what it last did; a
+state in which every registry's newest row is the server itself unreachable is
+reported as that. The page's rules are pure functions in
 `apps/web/data/status-model.ts`, tested with the rest (`pnpm test`).
 
 ## Licensing

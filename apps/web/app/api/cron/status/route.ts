@@ -3,14 +3,15 @@ import { checkAll, HISTORY_DAYS, STATUS_TAG } from "@/data/status";
 import { knownSources, pruneToolCalls, recordProbes, type ProbeRow } from "@/db/tool-calls";
 
 /**
- * The status monitor. Vercel calls this every ten minutes (`vercel.json`);
- * it asks each registry its source's declared probe through the public API,
+ * The status monitor. Vercel calls this once a day (`vercel.json`; its free
+ * plan allows no more, and starts the run some time within the hour). It
+ * asks each registry its source's declared probe through the public API,
  * with the web app's proof so the server skips its cache, and writes what
  * came back as `probe` rows beside the real calls the server records — so a
- * quiet day still has something to say, and a stretch when our own server
- * was down is recorded as one, which the server cannot do for itself. Then
- * it lets go of rows older than the page shows, and clears the page's cached
- * read, so the round is on the page by the next view.
+ * registry nobody called still has something to say, and a stretch when our
+ * own server was down is recorded as one, which the server cannot do for
+ * itself. Then it lets go of rows older than the page shows, and clears the
+ * page's cached read, so the round is on the page by the next view.
  *
  * Only the cron may call it: Vercel sends the project's `CRON_SECRET` as a
  * bearer token, and nothing else knows it.

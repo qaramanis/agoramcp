@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.46",
+    title: "Derive /status from each registry's newest recorded call and run the probe round daily",
+    body: [
+      "Vercel's Hobby plan runs a cron at most once a day, so the ten-minute probe round could not run. `apps/web/vercel.json` now schedules `/api/cron/status` daily at 04:00 UTC (Vercel starts it within that hour), and the page no longer waits on the round: each registry's state is its newest row in `tool_calls` over the last 7 days, a real call or the probe, whichever came last.",
+      "`listEvidence` replaces the probe and traffic reads with one query: per source, the newest row, the unbroken run of the same outcome behind it, the last 24 hours counted, and the newest probe kept apart, since its tool and time are the ones a reader can repeat. `not_found` and `invalid_input` count as answered, as in the history. Only a probe can be slow, and a failed real call is shown by its code, since the server records no message. A registry with nothing in 26 hours is shown as not asked recently, and a monitor with no round in 26 hours is flagged while real calls still count.",
+      "The model's tests cover mixed callers, slow probes, staleness, a late monitor and our server down; 227 pass. The query and the page ran against a local Postgres. Before deploying, run the `2026_10_16_090000` migration and set `PROXY_SECRET` on both projects, as for v.1.1.38.",
+    ],
+    date: "2026-10-16",
+  },
+  {
     version: "v.1.1.38",
     title: "Serve /status from recorded probe rounds, declare probes per source, and bypass the cache for authenticated probes",
     body: [
