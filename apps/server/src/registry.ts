@@ -7,9 +7,15 @@ import {
   type Bundle,
   type Source,
 } from "@agoramcp/core";
+import { admieSource } from "@agoramcp/source-gr-admie";
 import { athensSource } from "@agoramcp/source-gr-athens";
+import { civilprotectionSource } from "@agoramcp/source-gr-civilprotection";
 import { datagovSource } from "@agoramcp/source-gr-datagov";
 import { diavgeiaSource } from "@agoramcp/source-gr-diavgeia";
+import { ecbSource } from "@agoramcp/source-gr-ecb";
+import { etSource } from "@agoramcp/source-gr-et";
+import { eurostatSource } from "@agoramcp/source-gr-eurostat";
+import { fuelpricesSource } from "@agoramcp/source-gr-fuelprices";
 import { kimdisSource } from "@agoramcp/source-gr-kimdis";
 import { mitosSource } from "@agoramcp/source-gr-mitos";
 import { noaSource } from "@agoramcp/source-gr-noa";
@@ -22,9 +28,15 @@ import { z } from "zod";
  * import it here. The server itself needs no changes.
  */
 const SOURCES: readonly Source[] = [
+  admieSource,
   athensSource,
+  civilprotectionSource,
   datagovSource,
   diavgeiaSource,
+  ecbSource,
+  etSource,
+  eurostatSource,
+  fuelpricesSource,
   kimdisSource,
   mitosSource,
   noaSource,

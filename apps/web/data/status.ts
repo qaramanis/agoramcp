@@ -98,14 +98,24 @@ export const PROBE_HEADER = "x-agoramcp-probe";
  * A source not named here is checked with its first tool, so a new registry
  * appears on this page by being mounted rather than by being added to a list.
  *
+ * Eurostat is checked with one dataset's structure rather than its search,
+ * which answers from a catalogue held for hours and so says nothing about the
+ * service now.
+ *
  * NOA is checked with the last day of its catalogue rather than with
  * `search_earthquakes`. It is a search all the same, and the one whose answer
  * can be held to something: see `NEVER_EMPTY`.
  */
 const PROBE_TOOLS: Record<string, string> = {
+  admie: "list_files",
   athens: "search_datasets",
+  civilprotection: "list_maps",
   datagov: "search_datasets",
   diavgeia: "search_decisions",
+  ecb: "get_exchange_rate",
+  et: "search_legislation",
+  eurostat: "get_dataset_structure",
+  fuelprices: "list_bulletins",
   kimdis: "search_contracts",
   mitos: "search_procedures",
   noa: "list_recent_earthquakes",

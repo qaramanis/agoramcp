@@ -29,6 +29,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.37",
+    title: "Add six Greek sources: the Government Gazette, Eurostat, the ECB, fuel prices, ΑΔΜΗΕ and the fire-risk map",
+    body: [
+      "Greece now mounts 13 sources and 74 tools. `gr/et` searches the law index and every ΦΕΚ issue through search.et.gr's backend, follows which acts amended a law, and reads an issue's text. `gr/eurostat` and `gr/ecb` give the EU's harmonised statistics and the ECB's series with Greece as the default, and euro reference rates. `gr/fuelprices` reads the observatory's daily bulletins into pump prices for all 51 prefectures since 2017, and the weekly split into refinery price, taxes and margin. `gr/admie` lists and reads the transmission operator's 74 kinds of file, with the day's load and production by fuel since 2011 and tomorrow's forecast. `gr/civilprotection` reads the daily fire-risk map image into a category for each of 148 areas, by area or at a point.",
+      "ΑΔΜΗΕ's daily files are legacy .xls, so the package carries its own .xls and .xlsx readers; the .xls reader agrees with xlrd on every cell of 14 files from 2011 to 2026. The fuel bulletins are read by position, which survives blank cells, split numbers and the broken Greek font of 2018 to 2020 (61 bulletins, all 51 prefectures each). The fire-risk map is checked against its template before it is read, and gave no mismatch over the 2026 season.",
+      "The landing grid has four new logos: Ethniko Typografeio, Eurostat, ECB and the Ministry of Development for fuelprices.gr. 67 new offline tests (203 in all) pass, and every new tool answered against the live upstreams over the HTTP API and MCP. The fire-risk map is CC BY-NC-SA with a no-alteration clause, and the gazette portal's terms reserve its content; both licence lines say so.",
+    ],
+    date: "2026-10-16",
+  },
+  {
     version: "v.1.1.36",
     title: "Show every page before its script loads, fit the site to phones, and tighten its motion",
     body: [

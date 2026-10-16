@@ -35,6 +35,12 @@ export const sources: SourceLogo[] = [
   { name: "ADMIE", short: "ADMIE", logo: "/logos/admie.svg", invert: true },
   { name: "Elliniko Ktimatologio", short: "Ktimatologio", logo: "/logos/ktimatologio.svg" },
   { name: "Politiki Prostasia", short: "Politiki Prostasia", logo: "/logos/civilprotection.png" },
+  { name: "Ethniko Typografeio", short: "ET", logo: "/logos/et.png" },
+  { name: "Eurostat", short: "Eurostat", logo: "/logos/eurostat.svg", invert: true },
+  { name: "ECB", short: "ECB", logo: "/logos/ecb.svg", invert: true },
+  // fuelprices.gr has no mark of its own, so this is its publisher's: the
+  // Ministry of Development.
+  { name: "Paratiritirio Timon Kafsimon", short: "Kafsima", logo: "/logos/fuelprices.png", invert: true, opaque: true },
 ];
 
 /** Fixed for now — 2 rows across the 10 content columns. Add rows as sources land. */

@@ -1,0 +1,21 @@
+{
+  "name": "@agoramcp/source-gr-civilprotection",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agoramcp/core": "workspace:*",
+    "jpeg-js": "^0.4.4",
+    "zod": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "typescript": "^5.9.0"
+  }
+}
