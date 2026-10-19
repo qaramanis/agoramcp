@@ -6,7 +6,7 @@
  * build time, which is what lets the snippets be server-rendered.
  */
 export const MCP_BASE_URL =
-  process.env.NEXT_PUBLIC_MCP_BASE_URL ?? "http://localhost:3000";
+  process.env.NEXT_PUBLIC_MCP_BASE_URL || "http://localhost:3000";
 
 /**
  * True while the addresses point at a machine only the reader has. The page

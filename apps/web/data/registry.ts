@@ -8,7 +8,7 @@
 import type { InputSchema } from "./playground";
 
 /** Loopback in dev; a private address once the server is deployed. */
-export const MCP_SERVER_URL = process.env.MCP_SERVER_URL ?? "http://127.0.0.1:3000";
+export const MCP_SERVER_URL = process.env.MCP_SERVER_URL || "http://127.0.0.1:3000";
 
 /**
  * How stale the tool list may be. A new source is one server restart away, not

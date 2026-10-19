@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/serve.ts",
-    "start": "tsx src/serve.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/serve.ts",
+    "start": "tsx --env-file-if-exists=.env src/serve.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
