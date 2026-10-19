@@ -31,6 +31,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.42",
+    title: "License the code under the AGPL-3.0 and link its source from the footer",
+    body: [
+      "The code is now under the GNU Affero General Public License v3.0 only. `LICENSE` at the root holds the full text from gnu.org, and every `package.json` in the workspace (the root, both apps, `core`, `ckan` and the 13 sources) says `\"license\": \"AGPL-3.0-only\"`. The README's Licensing section says what the AGPL asks: a changed version run as a network service must offer its source to the people who use it.",
+      "The footer's Legal column gains a Source code link to the repository on GitHub, under Privacy and Terms, so the code the service runs is one click from every page. Search finds it too, by `github`, `repository`, `agpl` or `license`.",
+      "The AGPL covers the code and nothing else. Every record keeps the licence and attribution of the registry that published it, as each source's `meta.ts` declares them, and the server still sends both with every answer.",
+      "Every dependency's licence was checked with `pnpm licenses list`. The tree is MIT, ISC, Apache-2.0, BSD, 0BSD and Unlicense, plus one LGPL-3.0 library (libvips, which Next.js pulls in through `sharp`) and three MPL-2.0 build and lint tools. All of them can be combined with the AGPL.",
+    ],
+    date: "2026-10-19",
+  },
+  {
     version: "v.1.1.41",
     title: "Rewrite the README, give each app its own .env.example, and count only non-merge commits in the version",
     body: [

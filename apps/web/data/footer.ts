@@ -46,7 +46,8 @@ export const footerColumns: FooterColumn[] = [
     links: [...resourceItems, ...resourceCards].map(fromMenu),
   },
   /**
-   * The two pages that are about the service rather than the data. The
+   * The two pages that are about the service rather than the data, and the
+   * code the service runs, which the AGPL-3.0 has it offer to its users. The
    * licences page is under Resources with the rest of the nav, and the
    * attribution band is on it.
    */
@@ -56,6 +57,12 @@ export const footerColumns: FooterColumn[] = [
     links: [
       { label: "Privacy", href: "/privacy", keywords: ["gdpr", "cookies", "data"] },
       { label: "Terms", href: "/terms", keywords: ["conditions", "legal"] },
+      {
+        label: "Source code",
+        href: "https://github.com/qaramanis/agoramcp/",
+        external: true,
+        keywords: ["github", "repository", "agpl", "license"],
+      },
     ],
   },
 ];
