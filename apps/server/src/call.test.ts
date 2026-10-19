@@ -104,7 +104,7 @@ describe("callTool", () => {
     assert.equal(r.records.length, 1);
     assert.deepEqual(
       Object.keys(r.records[0]!).sort(),
-      ["calledAt", "code", "durationMs", "ok", "requestId", "source", "tool", "transport"],
+      ["cached", "calledAt", "code", "durationMs", "ok", "requestId", "source", "tool", "transport"],
     );
     assert.deepEqual([r.records[0]!.ok, r.records[0]!.code], [false, "not_found"]);
   });
@@ -158,5 +158,21 @@ describe("the monitor's proven check", () => {
     assert.deepEqual(await call(writeOnlyCache(shared)), { fetch: 2 });
     // And what it fetched is what the next caller gets.
     assert.deepEqual(await call(shared), { fetch: 2 });
+  });
+
+  test("an answer wholly from the cache is recorded as cached; one that reached the registry is not", async () => {
+    const shared = createMemoryCache();
+    const records: ToolCallRecord[] = [];
+    const call = (cache: ToolDeps["cache"]) =>
+      callTool(cachedSource, counted, {}, { ...deps(false, [], records), cache }, new AbortController().signal);
+
+    await call(shared);
+    await call(shared);
+    await call(writeOnlyCache(shared));
+    assert.deepEqual(records.map((record) => record.cached), [false, true, false]);
+
+    // A tool that reads no cache at all asked its registry.
+    await callTool(source, lookup, { vatNumber: "094014201" }, deps(false, [], records), new AbortController().signal);
+    assert.equal(records.at(-1)?.cached, false);
   });
 });

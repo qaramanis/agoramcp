@@ -2,9 +2,10 @@ import { db } from "./client";
 
 /**
  * The status history's table: every call the server answered and every probe
- * the cron made, as `tool_calls` rows. The server inserts its own rows
+ * the monitor made, as `tool_calls` rows. The server inserts its own rows
  * (`apps/server/src/record.ts`); this module is the web app's side — the
- * probe's inserts, the prune, and the reads the status page makes.
+ * probe's inserts, the claim on a round, the prune, and the reads the status
+ * page makes.
  */
 
 /**
@@ -42,6 +43,24 @@ export async function recordProbes(rows: ProbeRow[]): Promise<void> {
   await sql`insert into tool_calls ${sql(values, "source", "tool", "transport", "ok", "code", "detail", "duration_ms")}`;
 }
 
+/**
+ * Claims the next round of the monitor's checks: true when this caller
+ * should make it. Only one claim wins while the newest round is under
+ * `everyMinutes` old — the row lock makes a second claim at the same moment
+ * wait, then find the round already moved forward (`status_monitor`). The
+ * cron claims with 0, so its daily round always runs, and a reader who
+ * opens the page just after it does not start another.
+ */
+export async function claimRound(everyMinutes: number): Promise<boolean> {
+  const sql = db();
+  const rows = await sql`
+    insert into status_monitor (id, round_at) values (1, now())
+    on conflict (id) do update set round_at = excluded.round_at
+    where status_monitor.round_at <= now() - make_interval(mins => ${everyMinutes})
+    returning round_at`;
+  return rows.length > 0;
+}
+
 /** Drops rows older than the window the page shows. Returns how many went. */
 export async function pruneToolCalls(days: number): Promise<number> {
   const sql = db();
@@ -77,7 +96,7 @@ export type EvidenceRecord = {
   source: string;
   latest: {
     at: string;
-    /** `probe` for the monitor's daily check, `api` or `mcp` for a real call. */
+    /** `probe` for the monitor's check, `api` or `mcp` for a real call. */
     via: string;
     tool: string;
     /** Answered, or failed for a reason that was the caller's own. */
@@ -122,9 +141,10 @@ type EvidenceRow = {
 /**
  * Every source's evidence over the last `days`, one row each, in one query:
  * real calls and the monitor's checks are read alike, since either one shows
- * whether the registry answered. A caller's own mistake counts as answered,
- * as it does in the history. The run is everything since the last call or
- * check with the other outcome.
+ * whether the registry answered. A call answered wholly from the server's
+ * cache is not read at all: the registry was not asked. A caller's own
+ * mistake counts as answered, as it does in the history. The run is
+ * everything since the last call or check with the other outcome.
  */
 export async function listEvidence(days: number): Promise<EvidenceRecord[]> {
   const sql = db();
@@ -134,7 +154,7 @@ export async function listEvidence(days: number): Promise<EvidenceRecord[]> {
       select source, tool, transport, called_at, code, detail, duration_ms,
              (ok or code = any(${own})) as answered
       from tool_calls
-      where called_at >= now() - make_interval(days => ${days})
+      where called_at >= now() - make_interval(days => ${days}) and not cached
     ),
     latest as (
       select distinct on (source) *
@@ -227,7 +247,8 @@ export type DayRow = {
 /**
  * Every source's calls over the last `days` UTC days, one row per source and
  * day. A `not_found` or `invalid_input` is the caller's — the registry did
- * answer — so it counts as a call but not as a failure.
+ * answer — so it counts as a call but not as a failure. A call answered
+ * wholly from the server's cache never reached the registry, and is left out.
  */
 export async function listSourceHistory(days: number, slowMs: number): Promise<DayRow[]> {
   const sql = db();
@@ -243,7 +264,7 @@ export async function listSourceHistory(days: number, slowMs: number): Promise<D
       )::int as failed,
       count(*) filter (where duration_ms > ${slowMs})::int as slow
     from tool_calls
-    where called_at >= ${since}
+    where called_at >= ${since} and not cached
     group by source, day`;
 }
 

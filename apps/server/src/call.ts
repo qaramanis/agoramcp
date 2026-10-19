@@ -69,6 +69,11 @@ export interface ToolCallRecord {
   /** The `AgoraError` code when not ok; `internal` for anything a source did not throw on purpose. */
   code: ErrorCode | null;
   durationMs: number;
+  /**
+   * Answered wholly from the cache: every read hit, so the registry was not
+   * asked. It says nothing about whether the registry is answering.
+   */
+  cached: boolean;
   requestId: string;
 }
 
@@ -116,6 +121,7 @@ export async function callTool(
           ok,
           code,
           durationMs,
+          cached: cache.answeredFromMemory(),
           requestId: deps.requestId,
         });
       } catch (error) {
@@ -247,6 +253,8 @@ export function writeOnlyCache(cache: Cache): Cache {
 
 interface CountingCache extends Cache {
   counts(): { gets: number; hits: number };
+  /** Read, and every read a hit: the answer came from memory, not the registry. */
+  answeredFromMemory(): boolean;
 }
 
 /**
@@ -269,5 +277,6 @@ function countingCache(cache: Cache): CountingCache {
     delete: (key) => cache.delete(key),
     clear: () => cache.clear(),
     counts: () => ({ gets, hits }),
+    answeredFromMemory: () => gets > 0 && hits === gets,
   };
 }

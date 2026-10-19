@@ -1,16 +1,28 @@
 import { fallsShort, PROBE_HEADER, type ResolvedProbe } from "@agoramcp/core/probe";
 import { PROXY_HEADER } from "@agoramcp/core/requester";
-import { unstable_cache } from "next/cache";
-import { listEvidence, listSourceHistory, type DayRow, type EvidenceRecord } from "@/db/tool-calls";
+import { revalidateTag, unstable_cache } from "next/cache";
+import { after } from "next/server";
+import {
+  claimRound,
+  knownSources,
+  listEvidence,
+  listSourceHistory,
+  recordProbes,
+  type DayRow,
+  type EvidenceRecord,
+  type ProbeRow,
+} from "@/db/tool-calls";
 import { allPath } from "./directory";
 import { greeklish } from "./greeklish";
 import { fetchRegistry, MCP_SERVER_URL, type Registry, type RegistrySource } from "./registry";
 import {
+  ASK_AGAIN_MINUTES,
   buildHistory,
   composeSources,
   composeVerdict,
   EVIDENCE_DAYS,
   HISTORY_DAYS,
+  roundDue,
   SLOW_MS,
   TIMEOUT_MS,
   type Mounted,
@@ -24,19 +36,25 @@ export * from "./status-model";
 /**
  * The status monitor, and the page that reports it.
  *
- * The monitor is the cron at `/api/cron/status`: once a day it makes one
- * real call per mounted registry, the way anyone else would — a plain HTTP
- * request to the public API — and writes what came back as a `probe` row.
- * Each source declares the call (`probe` on its `defineSource`): its
- * cheapest live question, and what a working registry cannot answer without.
- * The request carries the web app's proof, so the server skips its cache and
- * the question reaches the registry itself.
+ * A round of the monitor makes one real call per mounted registry, the way
+ * anyone else would — a plain HTTP request to the public API — and writes
+ * what came back as a `probe` row. Each source declares the call (`probe` on
+ * its `defineSource`): its cheapest live question, and what a working
+ * registry cannot answer without. The request carries the web app's proof,
+ * so the server skips its cache and the question reaches the registry itself.
  *
- * The page calls nothing. It reads each registry's newest call or check,
- * whoever made it, and the ninety-day history, all from the database, and
- * holds what it read for a minute — or until the monitor's next round, which
- * clears it. So a real call that failed is on the page within a minute, and
- * a thousand readers cost one read.
+ * Two things start a round. The cron at `/api/cron/status` does once a day,
+ * the most Vercel's free plan allows, so a registry nobody looks at is still
+ * checked daily. And the page does when it is opened and the newest round is
+ * older than `ASK_AGAIN_MINUTES`: the round is claimed in the database, so
+ * only one reader starts it, and that reader's page streams the answers in
+ * as soon as they are written. A page nobody opens asks nothing.
+ *
+ * Otherwise the page reads each registry's newest call or check, whoever
+ * made it, and the ninety-day history, all from the database, and holds
+ * what it read for a minute — or until the next round, which clears it. So
+ * a real call that failed is on the page within a minute, and a thousand
+ * readers cost one read.
  */
 
 /** The tag the page's read is cached under; the cron clears it after each round. */
@@ -188,6 +206,37 @@ async function reason(response: Response): Promise<{ code: string; detail: strin
   return { code: `http_${response.status}`, detail: `The API answered ${response.status}.` };
 }
 
+/**
+ * One round, checked and written: a row per mounted registry. Should our own
+ * server not even say what it mounts, every registry seen lately is
+ * unreachable through us — which is what a caller would find — and is
+ * written as that.
+ */
+export async function runRound(): Promise<{ rows: ProbeRow[]; unavailable: string | null }> {
+  const round = await checkAll();
+
+  const rows: ProbeRow[] = round.unavailable
+    ? (await knownSources(HISTORY_DAYS)).map((source) => ({
+        source,
+        tool: "",
+        ok: false,
+        code: "unreachable",
+        detail: round.unavailable,
+        durationMs: 0,
+      }))
+    : round.checks.map((check) => ({
+        source: check.key,
+        tool: check.tool,
+        ok: check.health !== "down",
+        code: check.code,
+        detail: check.detail,
+        durationMs: check.ms,
+      }));
+
+  await recordProbes(rows);
+  return { rows, unavailable: round.unavailable };
+}
+
 /* -------------------------------------------------------------------------- */
 /* The page                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -197,22 +246,23 @@ type MonitorRead = {
   days: DayRow[];
 };
 
+/** Everything the page needs from the database, in two queries side by side. */
+async function readRecord(): Promise<MonitorRead> {
+  const [evidence, days] = await Promise.all([
+    listEvidence(EVIDENCE_DAYS),
+    listSourceHistory(HISTORY_DAYS, SLOW_MS),
+  ]);
+  return { evidence, days };
+}
+
 /**
- * Everything the page needs from the database, in two queries side by side,
- * held for a minute and dropped as soon as the monitor records a new round.
+ * The same, held for a minute and dropped as soon as a round is written.
  * JSON throughout: times are ISO strings, since the cache keeps JSON.
  */
-const readMonitor = unstable_cache(
-  async (): Promise<MonitorRead> => {
-    const [evidence, days] = await Promise.all([
-      listEvidence(EVIDENCE_DAYS),
-      listSourceHistory(HISTORY_DAYS, SLOW_MS),
-    ]);
-    return { evidence, days };
-  },
-  ["status-monitor"],
-  { tags: [STATUS_TAG], revalidate: READ_SECONDS },
-);
+const readMonitor = unstable_cache(readRecord, ["status-monitor"], {
+  tags: [STATUS_TAG],
+  revalidate: READ_SECONDS,
+});
 
 export type Status = {
   verdict: Verdict;
@@ -223,10 +273,16 @@ export type Status = {
   monitorUnavailable: string | null;
   /** Why the list of registries came from the record rather than the server, when it did. */
   catalogueUnavailable: string | null;
+  /** The monitor's newest check is old enough that opening the page should ask again. */
+  roundDue: boolean;
 };
 
-export async function loadStatus(now: Date = new Date()): Promise<Status> {
-  const [registry, read] = await Promise.all([fetchRegistry(), readMonitorSafely()]);
+/**
+ * What the page shows. `fresh` reads past the minute-long cache: for the
+ * reader whose view just made a round, the copy in the cache predates it.
+ */
+export async function loadStatus(now: Date = new Date(), { fresh = false } = {}): Promise<Status> {
+  const [registry, read] = await Promise.all([fetchRegistry(), readMonitorSafely(fresh)]);
   const { evidence, days } = read.data;
 
   // The registries are named and linked from the server's own list. Should it
@@ -245,21 +301,54 @@ export async function loadStatus(now: Date = new Date()): Promise<Status> {
       });
 
   const sources = composeSources(mounted, evidence, now);
+  const verdict: Verdict = read.unavailable
+    ? { state: "none", summary: "The record could not be read.", askedAt: null, checkedAt: null, monitorLate: false }
+    : composeVerdict(sources, now);
   return {
-    verdict: read.unavailable
-      ? { state: "none", summary: "The record could not be read.", askedAt: null, checkedAt: null, monitorLate: false }
-      : composeVerdict(sources, now),
+    verdict,
     sources,
     history: buildHistory(days, mounted.map((source) => source.key), now),
     monitorUnavailable: read.unavailable,
     catalogueUnavailable: registry.registry ? null : registry.unavailable,
+    // A record that will not read would not take the round's rows either.
+    roundDue: read.unavailable === null && roundDue(verdict.checkedAt, now),
   };
 }
 
-/** A database that cannot be reached is a sentence on the page, not a crash. */
-async function readMonitorSafely(): Promise<{ data: MonitorRead; unavailable: string | null }> {
+/**
+ * Whether this view makes the next round: it is due, and no other reader
+ * has just claimed it. One short write, and only when a round is due.
+ */
+export async function claimViewRound(status: Status): Promise<boolean> {
+  if (!status.roundDue) return false;
   try {
-    return { data: await readMonitor(), unavailable: null };
+    return await claimRound(ASK_AGAIN_MINUTES);
+  } catch (error) {
+    console.error("status: could not claim a round", error);
+    return false;
+  }
+}
+
+/**
+ * The round a view claimed, made while its page streams. Once the response
+ * is sent the cached read is let go, so every reader after this one sees the
+ * round too. A round that fails is logged, and the reader gets whatever the
+ * record holds.
+ */
+export async function makeViewRound(): Promise<void> {
+  try {
+    await runRound();
+  } catch (error) {
+    console.error("status: the round a view started failed", error);
+  } finally {
+    after(() => revalidateTag(STATUS_TAG, { expire: 0 }));
+  }
+}
+
+/** A database that cannot be reached is a sentence on the page, not a crash. */
+async function readMonitorSafely(fresh: boolean): Promise<{ data: MonitorRead; unavailable: string | null }> {
+  try {
+    return { data: await (fresh ? readRecord() : readMonitor()), unavailable: null };
   } catch (error) {
     console.error("status: database unavailable", error);
     return {

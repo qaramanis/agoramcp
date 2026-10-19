@@ -29,6 +29,17 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.47",
+    title: "Fix /status, check again whenever the page is opened, and move both apps to Frankfurt",
+    body: [
+      "`/status` said \"The record could not be read\" from 16 October on: the `2026_10_16_090000` migration had not run in production, so the page's read and the cron's inserts both failed on the missing `detail` column, and no check was written after 16 October 20:40 UTC. Running the pending migrations fixes it.",
+      "With one cron run a day, a registry nobody called showed a check up to a day old. The page now starts a round itself when it is opened and the newest check is more than 10 minutes old. The round is claimed in a new one-row `status_monitor` table by one statement, so however many readers arrive at once, one round runs. That reader gets the page at once with a line saying the monitor is asking again, and the answers stream in over it within seconds; every other reader is not held up. The cron still runs daily, so a page nobody opens is still checked.",
+      "A call the server answered wholly from its cache never reached the registry, yet it counted as the registry answering. The server now records `cached` on each row, and the page leaves those rows out of the state and the 90-day bars.",
+      "Both Vercel projects ran in Washington (`iad1`) while the database is in Frankfurt and the registries are in Greece, so every query crossed the Atlantic. `apps/web/vercel.json` now pins the web app to `fra1`; the server's region is set in its dashboard. Locally a view takes 45 ms, and the view that runs a round sends its first byte in 0.13 s and the round's answers by 1.5 s. 229 tests pass; the page, the claim under eight parallel views, the cron and the cached flag ran end to end against a local Postgres.",
+    ],
+    date: "2026-10-19",
+  },
+  {
     version: "v.1.1.46",
     title: "Derive /status from each registry's newest recorded call and run the probe round daily",
     body: [
