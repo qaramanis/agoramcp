@@ -6,8 +6,10 @@
  * generates this file.
  *
  * The version is `v.{major}.{countries}.{commits}`, the number the footer
- * shows. `commits` is how many the repository will hold once the commit
- * carrying the entry exists: `git rev-list --count HEAD` plus one.
+ * shows. `commits` is how many non-merge commits the repository will hold
+ * once the commit carrying the entry exists:
+ * `git rev-list --count --no-merges HEAD` plus one. Merge commits do not move
+ * it, so a change counts once, whichever branches it travels through.
  * `countries` is how many have a source mounted, and moves when one is
  * added. `major` is bumped by hand, when the shape of the thing changes
  * rather than its size.
@@ -29,7 +31,16 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: "v.1.1.47",
+    version: "v.1.1.41",
+    title: "Count only non-merge commits in the version",
+    body: [
+      "The last part of the version counted every commit, so each pull request merged into `main` moved it by one more than the work it carried, and `main` and `develop` gave the same change different numbers. It is now `git rev-list --count --no-merges HEAD` plus one: still a count of commits, but merges do not move it.",
+      "Every entry was recounted once against the commit that carried it. Up to v.1.1.38 the history held no merges on the line each entry shipped on, so those numbers stay. The two after it change: v.1.1.46 is now v.1.1.39 and v.1.1.47 is now v.1.1.40. The rule is stated in `data/changelog.ts`, `data/version.ts`, the changelog page and the README.",
+    ],
+    date: "2026-10-19",
+  },
+  {
+    version: "v.1.1.40",
     title: "Fix /status, check again whenever the page is opened, and move both apps to Frankfurt",
     body: [
       "`/status` said \"The record could not be read\" from 16 October on: the `2026_10_16_090000` migration had not run in production, so the page's read and the cron's inserts both failed on the missing `detail` column, and no check was written after 16 October 20:40 UTC. Running the pending migrations fixes it.",
@@ -40,7 +51,7 @@ export const changelog: ChangelogEntry[] = [
     date: "2026-10-19",
   },
   {
-    version: "v.1.1.46",
+    version: "v.1.1.39",
     title: "Derive /status from each registry's newest recorded call and run the probe round daily",
     body: [
       "Vercel's Hobby plan runs a cron at most once a day, so the ten-minute probe round could not run. `apps/web/vercel.json` now schedules `/api/cron/status` daily at 04:00 UTC (Vercel starts it within that hour), and the page no longer waits on the round: each registry's state is its newest row in `tool_calls` over the last 7 days, a real call or the probe, whichever came last.",

@@ -213,8 +213,9 @@ again: it upserts, and it never unmarks a country.
 The version the footer shows, `v.1.{countries}.{commits}`, and the changelog
 behind it come from `apps/web/data/changelog.ts`, written by hand: one entry at
 the top, in the same commit as the change it describes. `countries` is how many
-have a source mounted, and `commits` is what `git rev-list --count HEAD` will
-say once that commit exists. Nothing generates the file, so the page never
+have a source mounted, and `commits` is what
+`git rev-list --count --no-merges HEAD` will say once that commit exists:
+merge commits do not move it. Nothing generates the file, so the page never
 needs a commit of its own.
 
 ## Adding a source

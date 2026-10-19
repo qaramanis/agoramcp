@@ -10,7 +10,8 @@ import { changelog, type ChangelogEntry } from "./changelog";
  * Both come from the top of `data/changelog.ts`, which is written by hand and
  * committed with the change it describes. So the newest entry is the version
  * being served: `v.{major}.{countries}.{commits}`, whose last part is the
- * number of commits in the repository, counting the one the entry shipped in.
+ * number of non-merge commits in the repository, counting the one the entry
+ * shipped in.
  */
 export function currentRelease(): ChangelogEntry | null {
   return changelog[0] ?? null;

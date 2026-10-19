@@ -33,7 +33,8 @@ export default function ChangelogPage() {
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
               The version in front of each one is the version the project stood
               at when that commit landed: the same counter the footer carries,
-              whose last part is the number of commits behind it.
+              whose last part is the number of commits behind it, not
+              counting merges.
             </p>
           </div>
 
