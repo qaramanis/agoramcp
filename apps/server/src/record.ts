@@ -27,10 +27,10 @@ export function createCallRecorder(databaseUrl: string, logger: Logger): CallRec
 
   return (record) => {
     const insert = sql`
-      insert into tool_calls (called_at, source, tool, transport, ok, code, duration_ms, request_id)
+      insert into tool_calls (called_at, source, tool, transport, ok, code, duration_ms, cached, request_id)
       values (
         ${record.calledAt}, ${record.source}, ${record.tool}, ${record.transport},
-        ${record.ok}, ${record.code}, ${record.durationMs}, ${record.requestId}
+        ${record.ok}, ${record.code}, ${record.durationMs}, ${record.cached}, ${record.requestId}
       )`.then(
       () => undefined,
       (error: unknown) => {

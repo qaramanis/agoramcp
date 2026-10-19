@@ -2,14 +2,15 @@
  * What the status page says, worked out from the record — pure, so every
  * rule here is tested without a database or a server.
  *
- * The page calls nothing. Every call the server answers is a row in
- * `tool_calls`, and once a day a monitor (the cron at `/api/cron/status`)
- * asks every registry one question of its own and writes the outcome as a
- * `probe` row beside them. A registry is shown as the newest of those rows
- * found it, whoever asked: a call that failed a minute ago is the present,
- * and so is the monitor's check on a day nobody else asked. This module
- * turns the rows into the verdict at the top of the page, a state per
- * registry, and the strip of its last ninety days.
+ * Every call the server answers is a row in `tool_calls`, and a monitor asks
+ * every registry one question of its own and writes the outcome as a
+ * `probe` row beside them: once a day from the cron at `/api/cron/status`,
+ * and again whenever the page is opened and the newest round is older than
+ * `ASK_AGAIN_MINUTES`. A registry is shown as the newest of those rows found
+ * it, whoever asked: a call that failed a minute ago is the present, and so
+ * is the monitor's check on a day nobody else asked. This module turns the
+ * rows into the verdict at the top of the page, a state per registry, the
+ * strip of its last ninety days, and whether to ask again.
  *
  * Kept free of `@/` imports and of Next, so `tsx --test` can load it.
  */
@@ -31,6 +32,14 @@ export const HISTORY_DAYS = 90;
  * free plan allows one run a day, and starts it some time within that hour.
  */
 export const CHECK_HOUR_UTC = 4;
+
+/**
+ * Past this, opening the page starts a new round: the reader who opens it
+ * sees the answers within seconds, and a thousand readers in that time still
+ * start one round between them. Long enough that a registry is asked no more
+ * often than the ten-minute cron used to ask it.
+ */
+export const ASK_AGAIN_MINUTES = 10;
 
 /**
  * Past this with nothing asked, what a registry last did is no longer
@@ -105,7 +114,7 @@ export type Mounted = {
 /* Output                                                                     */
 /* -------------------------------------------------------------------------- */
 
-/** Who asked: the monitor's daily check, or a real call through the API or over MCP. */
+/** Who asked: the monitor's check, or a real call through the API or over MCP. */
 export type AskedBy = "check" | "api" | "mcp";
 
 export type SourceStatus = Mounted & {
@@ -313,6 +322,15 @@ export function composeVerdict(sources: readonly SourceStatus[], now: Date = new
   const down = asked.filter((source) => source.health === "down").length;
   const state: VerdictState = down === asked.length ? "down" : down > 0 ? "degraded" : "ok";
   return { state, summary: summarise(sources), ...times };
+}
+
+/**
+ * Whether the page should start a round: the monitor's newest check is older
+ * than `ASK_AGAIN_MINUTES`, or there is none in the window. Who actually
+ * makes it is settled in the database, so this only says it is worth trying.
+ */
+export function roundDue(checkedAt: string | null, now: Date = new Date()): boolean {
+  return checkedAt === null || now.getTime() - Date.parse(checkedAt) > ASK_AGAIN_MINUTES * 60_000;
 }
 
 /* -------------------------------------------------------------------------- */

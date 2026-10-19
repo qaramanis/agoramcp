@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { columnGapClass, Grid, gutterClass } from "@/components/layout/grid";
 import Band from "@/components/mcp/band";
 import { Code } from "@/components/mcp/inline";
 import HistoryStrip from "@/components/status/history-strip";
 import {
+  ASK_AGAIN_MINUTES,
   CHECK_WINDOW,
+  claimViewRound,
   DEGRADED_SHARE,
   EVIDENCE_DAYS,
   formatChecked,
@@ -14,6 +17,7 @@ import {
   HEALTH_LABELS,
   HISTORY_DAYS,
   loadStatus,
+  makeViewRound,
   OUTAGE_SHARE,
   SLOW_MS,
   STALE_AFTER_HOURS,
@@ -22,29 +26,59 @@ import {
   type Health,
   type SourceHistory,
   type SourceStatus,
+  type Status,
   type Verdict,
 } from "@/data/status";
 
 export const metadata: Metadata = {
   title: "Status - agoramcp",
   description:
-    "Every registry agoramcp mounts, as its newest call found it, checked once a day through the public API, and the last 90 days of every call that went through agoramcp, counted by the day.",
+    "Every registry agoramcp mounts, as its newest call found it, checked through the public API once a day and whenever this page is opened ten minutes after the last check, and the last 90 days of every call that reached a registry, counted by the day.",
 };
 
 /**
- * Rendered per request, like every page that reads the server, but it calls
- * nothing: what it shows is the record of calls, read through a cache that
- * holds it for a minute and that the monitor clears after each round
- * (`data/status.ts`).
+ * Rendered per request, like every page that reads the server: what it shows
+ * is the record of calls, read through a cache that holds it for a minute
+ * and that each round clears (`data/status.ts`). When the monitor's newest
+ * check is older than `ASK_AGAIN_MINUTES`, the one view that claims the next
+ * round makes it: that reader gets the record at once and the round's
+ * answers streamed in over it, and every other reader is not held up.
  */
 export const revalidate = 0;
 
 export default async function StatusPage() {
   const now = new Date();
-  const { verdict, sources, history, monitorUnavailable, catalogueUnavailable } = await loadStatus(now);
+  const status = await loadStatus(now);
+  const asking = await claimViewRound(status);
 
   return (
     <main className={`min-h-screen pt-28 pb-20 ${gutterClass}`}>
+      {asking ? (
+        <Suspense fallback={<Current status={status} now={now} asking />}>
+          <AskedAgain />
+        </Suspense>
+      ) : (
+        <Current status={status} now={now} asking={false} />
+      )}
+
+      <Method />
+    </main>
+  );
+}
+
+/** The round this view claimed, made while the page streams, and the record read again past the cache. */
+async function AskedAgain() {
+  await makeViewRound();
+  const now = new Date();
+  return <Current status={await loadStatus(now, { fresh: true })} now={now} asking={false} />;
+}
+
+/** The answer at the top, and every registry under it. */
+function Current({ status, now, asking }: { status: Status; now: Date; asking: boolean }) {
+  const { verdict, sources, history, monitorUnavailable, catalogueUnavailable } = status;
+
+  return (
+    <>
       <header className="flex min-h-[70vh] items-center">
         <Grid inset={false} className="w-full items-center gap-y-10">
           <div className="col-span-12 col-start-1 md:col-span-5">
@@ -52,13 +86,15 @@ export default async function StatusPage() {
               Is it answering?
             </h1>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-              Every call that goes through agoramcp is recorded, and once a day
-              a monitor asks each registry one question of its own, through the
-              same public API anyone else uses, skipping our cache so the answer
-              comes from the registry itself. Each registry is shown as the
+              Every call that goes through agoramcp is recorded, and a monitor
+              asks each registry one question of its own, through the same
+              public API anyone else uses, skipping our cache so the answer
+              comes from the registry itself. It asks once a day, and again
+              whenever this page is opened and its last check is more than{" "}
+              {ASK_AGAIN_MINUTES} minutes old. Each registry is shown as the
               newest of these found it, whoever asked. The bars under each
-              registry are the last {HISTORY_DAYS} days: every call that went
-              through the server &mdash; yours, the console&apos;s, the
+              registry are the last {HISTORY_DAYS} days: every call that reached
+              the registry &mdash; yours, the console&apos;s, the
               monitor&apos;s &mdash; counted by the day.
             </p>
             <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
@@ -70,7 +106,7 @@ export default async function StatusPage() {
           </div>
 
           <div className="col-span-12 col-start-1 md:col-span-6 md:col-start-7">
-            <VerdictPanel verdict={verdict} unavailable={monitorUnavailable} now={now} />
+            <VerdictPanel verdict={verdict} unavailable={monitorUnavailable} now={now} asking={asking} />
           </div>
         </Grid>
       </header>
@@ -78,12 +114,12 @@ export default async function StatusPage() {
       {sources.length > 0 && (
         <Band ariaLabel="Registries" title={`Every registry, now and over ${HISTORY_DAYS} days.`}>
           <p className="col-span-8 col-start-1 mt-3 text-[13px] leading-relaxed text-muted-foreground md:col-span-6">
-            The tool the daily check calls is named beside the source, so you
-            can run the same call yourself and compare. Its time, on the right,
-            is the whole round trip the monitor measured &mdash; our own hop
-            included, not just the registry&apos;s. Each bar is one day; hover
-            it for how many calls the registry was asked and how many it did
-            not answer.
+            The tool the monitor&apos;s check calls is named beside the
+            source, so you can run the same call yourself and compare. Its
+            time, on the right, is the whole round trip the monitor measured
+            &mdash; our own hop included, not just the registry&apos;s. Each
+            bar is one day; hover it for how many calls the registry was asked
+            and how many it did not answer.
           </p>
 
           {catalogueUnavailable && (
@@ -102,14 +138,22 @@ export default async function StatusPage() {
           </ul>
         </Band>
       )}
-
-      <Method />
-    </main>
+    </>
   );
 }
 
 /** The one-line answer, and when it was last true. */
-function VerdictPanel({ verdict, unavailable, now }: { verdict: Verdict; unavailable: string | null; now: Date }) {
+function VerdictPanel({
+  verdict,
+  unavailable,
+  now,
+  asking,
+}: {
+  verdict: Verdict;
+  unavailable: string | null;
+  now: Date;
+  asking: boolean;
+}) {
   const health: Health =
     verdict.state === "ok" ? "ok" : verdict.state === "stale" || verdict.state === "none" ? "unknown" : "down";
   const current = verdict.state === "ok" || verdict.state === "degraded" || verdict.state === "down";
@@ -125,6 +169,13 @@ function VerdictPanel({ verdict, unavailable, now }: { verdict: Verdict; unavail
 
       {unavailable && <p className="mt-2 text-[12px] leading-relaxed text-warn">{unavailable}</p>}
 
+      {asking && (
+        <p className="mt-2 text-[11px] leading-relaxed text-muted">
+          The monitor is asking every registry again now. Its answers replace
+          these in a few seconds.
+        </p>
+      )}
+
       {verdict.state === "server" && (
         <p className="mt-2 text-[12px] leading-relaxed text-warn">
           Our own server did not answer the monitor&apos;s latest check, and no
@@ -135,16 +186,16 @@ function VerdictPanel({ verdict, unavailable, now }: { verdict: Verdict; unavail
 
       {verdict.state === "stale" && (
         <p className="mt-2 text-[12px] leading-relaxed text-warn">
-          Not even the monitor&apos;s daily check has run since, so the states
-          below are what was last seen, not what is true now.
+          Not even the monitor has checked since, so the states below are
+          what was last seen, not what is true now.
         </p>
       )}
 
       {current && verdict.monitorLate && (
         <p className="mt-2 text-[12px] leading-relaxed text-warn">
           {verdict.checkedAt
-            ? `The monitor's daily check has not run since ${formatChecked(verdict.checkedAt)}.`
-            : `The monitor's daily check has not run in the last ${EVIDENCE_DAYS} days.`}{" "}
+            ? `The monitor has not checked since ${formatChecked(verdict.checkedAt)}.`
+            : `The monitor has not checked in the last ${EVIDENCE_DAYS} days.`}{" "}
           A registry nobody has called since is shown as not asked recently.
         </p>
       )}
@@ -161,8 +212,9 @@ function VerdictPanel({ verdict, unavailable, now }: { verdict: Verdict; unavail
           Last asked at {formatChecked(verdict.askedAt)}.
           {verdict.checkedAt && !verdict.monitorLate && (
             <>
-              {" "}The monitor last checked at {when(verdict.checkedAt, now)}, and
-              checks once a day, {CHECK_WINDOW}.
+              {" "}The monitor last checked at {when(verdict.checkedAt, now)}. It
+              checks once a day, {CHECK_WINDOW}, and again when this page is
+              opened more than {ASK_AGAIN_MINUTES} minutes after its last check.
             </>
           )}
         </p>
@@ -177,7 +229,7 @@ function when(iso: string, now: Date): string {
 }
 
 const ASKED_BY: Record<AskedBy, string> = {
-  check: "by the monitor's daily check",
+  check: "by the monitor's check",
   api: "by a call through the API",
   mcp: "by a call over MCP",
 };
@@ -361,10 +413,12 @@ function Method() {
             from the API, or from the monitor &mdash; leaves one row: which
             registry, which tool, whether it answered, the error&apos;s code
             when it did not, and how long it took. Never the arguments, and
-            never who asked. The newest row, a call or the check, is the state
-            shown for each registry, so a call that failed a minute ago is on
-            this page within a minute, without waiting for the next check. A
-            day is marked as degraded once more than one call
+            never who asked. A call the server answered from its own cache
+            never reached the registry, so this page leaves it out. The newest
+            row, a call or the check, is the state shown for each registry, so
+            a call that failed a minute ago is on this page within a minute,
+            without waiting for the next check. A day is marked as degraded
+            once more than one call
             in {degradedPast} went unanswered, as an outage past one in{" "}
             {outagePast}, and left blank when nothing was asked. A{" "}
             <Code>not_found</Code> or <Code>invalid_input</Code> is the
@@ -375,10 +429,12 @@ function Method() {
       </ul>
 
       <p className="col-span-8 col-start-1 mt-8 text-[12px] leading-relaxed text-muted-foreground md:col-span-6">
-        Opening this page calls nothing: it reads the record of calls, never
-        more than a minute old, and the monitor&apos;s round as soon as it is
-        made. To ask a registry
-        a question yourself, right now, use a tool in the{" "}
+        Opening this page reads the record of calls, which the site reads
+        again at most once a minute. When the monitor&apos;s last check is
+        more than {ASK_AGAIN_MINUTES} minutes old, it also starts the next
+        one, one at a time however many people open it, and shows the answers
+        as they come in. To ask a registry a question yourself, right now, use
+        a tool in the{" "}
         <Link href="/live" className="text-foreground transition-colors duration-300 hover:text-accent">
           live console
         </Link>

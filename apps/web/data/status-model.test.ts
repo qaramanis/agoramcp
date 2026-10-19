@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
+  ASK_AGAIN_MINUTES,
   buildHistory,
   composeSources,
   composeVerdict,
   HISTORY_DAYS,
+  roundDue,
   summarise,
   type Evidence,
   type Mounted,
@@ -162,5 +164,15 @@ describe("buildHistory", () => {
     assert.deepEqual(days.slice(-3).map((day) => day.state), ["outage", "degraded", "ok"]);
     assert.equal(history["gr/vies"]?.uptime, 268 / 300);
     assert.equal(history["gr/noa"]?.uptime, null);
+  });
+});
+
+describe("roundDue", () => {
+  test("asks again once the newest check is older than the interval, and when there is none", () => {
+    const minutes = (count: number) => new Date(now.getTime() - count * 60_000).toISOString();
+    assert.equal(roundDue(minutes(ASK_AGAIN_MINUTES - 1), now), false);
+    assert.equal(roundDue(minutes(ASK_AGAIN_MINUTES), now), false);
+    assert.equal(roundDue(minutes(ASK_AGAIN_MINUTES + 1), now), true);
+    assert.equal(roundDue(null, now), true);
   });
 });

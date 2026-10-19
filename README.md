@@ -138,6 +138,12 @@ dependencies change — so `packages/**` redeploys `apps/server`, whose
      string) and `REQUEST_HASH_SALT` for `/country` — see [Database](#database) —
      `PROXY_SECRET` for the `/live` proxy and the status monitor, and
      `CRON_SECRET` for the status cron.
+4. **Region.** Both projects run their functions in Frankfurt (`fra1`), next
+   to the Neon database (`eu-central-1`) and close to the Greek registries;
+   Vercel's default, Washington (`iad1`), puts the Atlantic between every
+   query and every upstream call. `web` sets it in
+   `apps/web/vercel.json`; `server` sets it in the dashboard (Settings →
+   Functions → Function Regions). The Hobby plan allows one region.
 
 One dev dependency exists for Vercel's sake: `apps/server` lists `undici-types`
 because Vercel type-checks the entry with a resolver that does not follow
@@ -313,20 +319,27 @@ playground call counts against the web app.
 With `DATABASE_URL` set on the server, every finished call also becomes one
 row in the web app's `tool_calls` table (`apps/web/db/migrations`): when,
 which source and tool, the transport, whether the handler returned, the
-error's code when it did not, the duration and the request id. Never the
+error's code when it did not, the duration, whether every cache read hit
+(`cached`: the registry was not asked) and the request id. Never the
 arguments and never an address. The insert runs off the response path and a
 failure is a `record.failed` line, never a failed call.
 
-The status monitor is the web app's cron (`apps/web/vercel.json`, once a day
-at 04:00 UTC — the most the Vercel Hobby plan allows, started some time within
-that hour — at `/api/cron/status`, let in by `CRON_SECRET`). Each round it asks
-every mounted registry the `probe` its source declares, through the public API
-as anyone would, and writes the outcome as a `probe` row — with `detail`, the
+The status monitor runs in the web app, in rounds. Each round asks every
+mounted registry the `probe` its source declares, through the public API as
+anyone would, and writes the outcome as a `probe` row — with `detail`, the
 API's own sentence for a failure — so a quiet day is not a blank one and a
 stretch when the server itself was unreachable is recorded as one. A probe
 whose answer falls short of the source's `expect` (no earthquakes in the last
 day, no exchange rate) is recorded as not answering, under the code `empty`.
-The cron then drops rows older than 90 days and clears the page's cached read.
+Two things start a round. The cron (`apps/web/vercel.json`, once a day at
+04:00 UTC — the most the Vercel Hobby plan allows, started some time within
+that hour — at `/api/cron/status`, let in by `CRON_SECRET`) starts one, then
+drops rows older than 90 days. And `/status` starts one when it is opened and
+the newest check is more than 10 minutes old. A round is claimed first in the
+one-row `status_monitor` table, by one statement that moves `round_at`
+forward only if it is old enough, so however many readers open the page at
+once, one round runs; the cron always claims. Each round clears the page's
+cached read.
 
 The monitor's call carries `x-agoramcp-probe` and, as proof that it is the web
 app, `x-agoramcp-proxy: $PROXY_SECRET`. With the proof the server reads
@@ -337,13 +350,17 @@ monitor writes that row itself. The mark without the proof, on a server that
 has the secret, is an ordinary call: cached, recorded, and logged as
 `probe.unproven`. Set `PROXY_SECRET` on both apps.
 
-`/status` calls nothing. It reads, from `tool_calls`, each registry's newest
-row of the last 7 days — a real call or the monitor's check, whichever came
-last, is the state shown — with the unbroken run of the same outcome behind it
-(since when), its last 24 hours counted, and the monitor's newest check kept
-apart (the tool and time a reader can repeat). It also reads the 90-day
-history, and holds both reads for a minute or until the next round clears
-them. Only the check is reported as slow: a real call takes as long as the
+`/status` reads, from `tool_calls`, each registry's newest row of the last 7
+days — a real call or the monitor's check, whichever came last, is the state
+shown — with the unbroken run of the same outcome behind it (since when), its
+last 24 hours counted, and the monitor's newest check kept apart (the tool and
+time a reader can repeat). It also reads the 90-day history, and holds both
+reads for a minute or until the next round clears them. Both reads leave out
+`cached` rows, since those never reached the registry. When the view claims a
+round, the page is sent at once with what the record held and a line saying
+the monitor is asking again, and the round's answers stream in over it when
+they are written (a `Suspense` boundary); every other view is not held up.
+Only the check is reported as slow: a real call takes as long as the
 question it asked. A failed real call is shown by its code, since the server
 does not record messages, which may repeat the arguments. A registry with
 nothing in 26 hours is shown as not asked recently, with what it last did; a
