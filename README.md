@@ -246,6 +246,17 @@ Each app has its own example file. Copy it next to the app.
 
 ## Licensing
 
-The data keeps its upstream licence. Each source declares its licence and
-attribution in `meta.ts`. The server sends them in the MCP instructions, on
-`GET /`, and with every HTTP API response.
+The code is under the GNU Affero General Public License v3.0 only
+(`AGPL-3.0-only`). The full text is in [`LICENSE`](LICENSE). Every
+`package.json` states the same licence.
+
+Copyright (C) 2026 Apostolos Karamanis.
+
+- You can use, change and share the code.
+- If you run a changed version as a network service, you must offer its source
+  to the users of that service.
+
+The AGPL covers the code, not the data. The data keeps its upstream licence,
+which the [sources table](#sources-greece) shows. Each source declares its
+licence and attribution in `meta.ts`. The server sends them in the MCP
+instructions, on `GET /`, and with every HTTP API response.
