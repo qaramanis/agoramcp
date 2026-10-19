@@ -6,8 +6,10 @@
  * generates this file.
  *
  * The version is `v.{major}.{countries}.{commits}`, the number the footer
- * shows. `commits` is how many the repository will hold once the commit
- * carrying the entry exists: `git rev-list --count HEAD` plus one.
+ * shows. `commits` is how many non-merge commits the repository will hold
+ * once the commit carrying the entry exists:
+ * `git rev-list --count --no-merges HEAD` plus one. Merge commits do not move
+ * it, so a change counts once, whichever branches it travels through.
  * `countries` is how many have a source mounted, and moves when one is
  * added. `major` is bumped by hand, when the shape of the thing changes
  * rather than its size.
@@ -29,7 +31,21 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: "v.1.1.47",
+    version: "v.1.1.41",
+    title: "Rewrite the README, give each app its own .env.example, and count only non-merge commits in the version",
+    body: [
+      "The README is now short sentences, tables and code blocks: what agoramcp is, a diagram of how a call reaches a registry, the endpoints, how to connect a client, the 13 Greek sources with their tool counts and licences, how to run, test and deploy, and the main settings. The long notes on logging, requesters and the status history are gone from it; the code and the two `.env.example` files still explain them.",
+      "Nothing read the root `.env`: the server ran under `tsx` with no env file, and Next.js and the db scripts read only `apps/web/.env.local`. Copying `.env.example` to `.env`, as the README said, changed nothing, and the server ran on its defaults.",
+      "The root file is now two: `apps/server/.env.example`, copied to `apps/server/.env`, which `pnpm dev` and `pnpm start` now load with `--env-file-if-exists`, and `apps/web/.env.example`, copied to `apps/web/.env.local`. The server's `DATABASE_URL` stays empty, so a local server does not record its calls into whatever database `.env.local` names.",
+      "Each example is now one key per line with a short inline comment. The web example lists the three keys the app cannot run without under `required`. The server runs locally on its defaults, so its example lists the four keys production needs under `required on Vercel, optional locally`: `VERCEL_EXPERIMENTAL_BACKENDS=1`, `DATABASE_URL`, `REQUEST_HASH_SALT` and `PROXY_SECRET`. Every other key in both files is under `optional` and left empty. An empty value now means the default everywhere: `NEXT_PUBLIC_MCP_BASE_URL`, `MCP_SERVER_URL`, `HOST` and `CORS_ORIGINS` were read with `??`, so an empty one replaced the default, and an empty `CORS_ORIGINS` refused every browser origin. They now use `||`.",
+      "The examples drop `REDIS_URL`, `ENTSOE_TOKEN` and `GEMI_KEY`, which no code reads, and add `CACHE_MAX_ENTRIES`. The ten-minute cron is gone from the `CRON_SECRET` note.",
+      "The last part of the version counted every commit, so each pull request merged into `main` moved it by one more than the work it carried, and `main` and `develop` gave the same change different numbers. It is now `git rev-list --count --no-merges HEAD` plus one: still a count of commits, but merges do not move it.",
+      "Every entry was recounted once against the commit that carried it. Up to v.1.1.38 the history held no merges on the line each entry shipped on, so those numbers stay. The two after it change: v.1.1.46 is now v.1.1.39 and v.1.1.47 is now v.1.1.40. The rule is stated in `data/changelog.ts`, `data/version.ts` and the changelog page.",
+    ],
+    date: "2026-10-19",
+  },
+  {
+    version: "v.1.1.40",
     title: "Fix /status, check again whenever the page is opened, and move both apps to Frankfurt",
     body: [
       "`/status` said \"The record could not be read\" from 16 October on: the `2026_10_16_090000` migration had not run in production, so the page's read and the cron's inserts both failed on the missing `detail` column, and no check was written after 16 October 20:40 UTC. Running the pending migrations fixes it.",
@@ -40,7 +56,7 @@ export const changelog: ChangelogEntry[] = [
     date: "2026-10-19",
   },
   {
-    version: "v.1.1.46",
+    version: "v.1.1.39",
     title: "Derive /status from each registry's newest recorded call and run the probe round daily",
     body: [
       "Vercel's Hobby plan runs a cron at most once a day, so the ten-minute probe round could not run. `apps/web/vercel.json` now schedules `/api/cron/status` daily at 04:00 UTC (Vercel starts it within that hour), and the page no longer waits on the round: each registry's state is its newest row in `tool_calls` over the last 7 days, a real call or the probe, whichever came last.",

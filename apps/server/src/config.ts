@@ -30,10 +30,10 @@ export interface Config {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const origins = (env.CORS_ORIGINS ?? "*").trim();
+  const origins = (env.CORS_ORIGINS || "*").trim();
 
   return {
-    host: env.HOST ?? "0.0.0.0",
+    host: env.HOST || "0.0.0.0",
     port: intFromEnv(env.PORT, 3000),
     logLevel: parseLogLevel(env.LOG_LEVEL, "info"),
     slowToolMs: intFromEnv(env.LOG_SLOW_TOOL_MS, 10_000),
