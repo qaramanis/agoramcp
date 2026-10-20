@@ -31,6 +31,14 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.43",
+    title: "Remove the Visualize button from /live",
+    body: [
+      "The Response panel on /live showed a Visualize button that did nothing. It was a placeholder for a feature that is not built. The header now holds only the Result and Raw toggle.",
+    ],
+    date: "2026-10-20",
+  },
+  {
     version: "v.1.1.42",
     title: "License the code under the AGPL-3.0 and link its source from the footer",
     body: [

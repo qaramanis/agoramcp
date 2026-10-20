@@ -54,38 +54,26 @@ export default function ResponsePanel({ busy, result, error }: ResponsePanelProp
         ) : null
       }
       actions={
-        <div className="flex items-center gap-2">
-          <div
-            className={`flex items-center gap-0.5 rounded border border-panel-border p-0.5 transition-opacity duration-300 ${
-              inert ? "opacity-40" : ""
-            }`}
-          >
-            {(["result", "raw"] as View[]).map((option) => (
-              <button
-                key={option}
-                type="button"
-                disabled={inert}
-                onClick={() => setView(option)}
-                className={`rounded-sm px-2 py-1 text-[10px] font-medium tracking-wider uppercase transition-colors duration-300 disabled:cursor-not-allowed ${
-                  view === option
-                    ? "bg-background text-foreground"
-                    : "text-muted enabled:hover:text-muted-foreground"
-                } ${inert ? "" : "cursor-pointer"}`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-
-          {/* Not wired up yet — the shape of the control, so the header can be
-              judged with it in place. */}
-          <button
-            type="button"
-            disabled={inert}
-            className="flex h-7 shrink-0 cursor-pointer items-center justify-center rounded border border-accent/40 bg-accent/20 px-3 text-center text-[10px] font-bold tracking-wider text-accent uppercase transition-[background-color,opacity,scale] duration-[300ms,300ms,160ms] ease-out hover:bg-accent/30 enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-accent/20"
-          >
-            Visualize
-          </button>
+        <div
+          className={`flex items-center gap-0.5 rounded border border-panel-border p-0.5 transition-opacity duration-300 ${
+            inert ? "opacity-40" : ""
+          }`}
+        >
+          {(["result", "raw"] as View[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              disabled={inert}
+              onClick={() => setView(option)}
+              className={`rounded-sm px-2 py-1 text-[10px] font-medium tracking-wider uppercase transition-colors duration-300 disabled:cursor-not-allowed ${
+                view === option
+                  ? "bg-background text-foreground"
+                  : "text-muted enabled:hover:text-muted-foreground"
+              } ${inert ? "" : "cursor-pointer"}`}
+            >
+              {option}
+            </button>
+          ))}
         </div>
       }
       overlay={shown === null || busy ? undefined : <CopyButton text={shown} />}
