@@ -1,5 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { HISTORY_DAYS, runRound, STATUS_TAG } from "@/data/status";
+import { logRetentionDays, pruneServerLogs } from "@/db/server-logs";
 import { claimRound, pruneToolCalls } from "@/db/tool-calls";
 
 /**
@@ -11,9 +12,10 @@ import { claimRound, pruneToolCalls } from "@/db/tool-calls";
  * server records — so a registry nobody called, and a page nobody opened,
  * still has something to say, and a stretch when our own server was down is
  * recorded as one, which the server cannot do for itself. Then it lets go
- * of rows older than the page shows, and clears the page's cached read, so
- * the round is on the page by the next view. Between these daily rounds,
- * the page starts its own when it is opened (`data/status.ts`).
+ * of rows older than the page shows and of the server's log lines older than
+ * `LOG_RETENTION_DAYS`, and clears the page's cached read, so the round is on
+ * the page by the next view. Between these daily rounds, the page starts its
+ * own when it is opened (`data/status.ts`).
  *
  * Only the cron may call it: Vercel sends the project's `CRON_SECRET` as a
  * bearer token, and nothing else knows it.
@@ -35,6 +37,7 @@ export async function GET(request: Request) {
   await claimRound(0);
   const { rows, unavailable } = await runRound();
   const pruned = await pruneToolCalls(HISTORY_DAYS);
+  const prunedLogs = await pruneServerLogs(logRetentionDays());
 
   // The next view reads the round just written, rather than the minute-old copy.
   revalidateTag(STATUS_TAG, { expire: 0 });
@@ -42,6 +45,7 @@ export async function GET(request: Request) {
   return Response.json({
     recorded: rows.length,
     pruned,
+    prunedLogs,
     unavailable,
     sources: rows.map((row) => ({ source: row.source, ok: row.ok, code: row.code, ms: row.durationMs })),
   });

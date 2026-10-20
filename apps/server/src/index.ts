@@ -13,7 +13,7 @@ import { requestLogger, type CallSummary } from "./middleware/logging.ts";
 import { createIdentify } from "./middleware/client.ts";
 import { probeMode } from "./middleware/probe.ts";
 import { createRateLimiter } from "./middleware/rate-limit.ts";
-import { createCallRecorder } from "./record.ts";
+import { connect, createCallRecorder, createClientRecorder, keepLogs } from "./record.ts";
 import {
   apiPath,
   buildBundles,
@@ -25,13 +25,17 @@ import {
 import { calledToolName, summariseRpc } from "./rpc.ts";
 
 const config = loadConfig();
-const logger = createLogger({ level: config.logLevel, base: { service: "agoramcp" } });
+/** The web app's database, where calls, clients and warnings are kept. Unset: nowhere, and the logs are stdout's alone. */
+const sql = config.databaseUrl ? connect(config.databaseUrl) : undefined;
+const logOptions = { level: config.logLevel, base: { service: "agoramcp" } };
+const logger = createLogger(sql ? { ...logOptions, write: keepLogs(sql, createLogger(logOptions)) } : logOptions);
 const cache = createMemoryCache({ maxEntries: config.cacheMaxEntries, maxBytes: config.cacheMaxBytes });
 const registry = buildRegistry();
 const bundles = buildBundles(registry);
 
-/** Where each call's outcome is kept for the status history — nowhere, without a database. */
-const record = config.databaseUrl ? createCallRecorder(config.databaseUrl, logger) : undefined;
+/** Where each call's outcome is kept for the status history, and each client that connects is counted. */
+const record = sql ? createCallRecorder(sql, logger) : undefined;
+const recordClient = sql ? createClientRecorder(sql, logger) : undefined;
 
 /** What every call shares. `requestDeps` adds what one request is. */
 const shared = {
@@ -272,6 +276,10 @@ async function runServer(
 
   try {
     const response = (await transport.handleRequest(c, body)) ?? c.body(null, 204);
+
+    // Only `initialize` names a client, and only one the transport answered
+    // is a connection. A proven check from the monitor is not one.
+    if (rpc?.client && response.ok && recordClient && !c.get("probe")) recordClient(rpc.client);
 
     // A `tools/call` that never reached a handler was refused by the SDK —
     // a name it does not know, or arguments its schema would not take — and

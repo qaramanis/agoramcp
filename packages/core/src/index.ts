@@ -40,7 +40,7 @@ export { cacheKey, createMemoryCache, withCache } from "./cache.ts";
 export type { Cache, MemoryCacheOptions } from "./cache.ts";
 
 export { createLogger, parseLogLevel } from "./logger.ts";
-export type { LogFields, LogLevel, Logger, LoggerOptions } from "./logger.ts";
+export type { LogEntry, LogFields, LogLevel, Logger, LoggerOptions } from "./logger.ts";
 
 export {
   MAX_TOOL_NAME_LENGTH,

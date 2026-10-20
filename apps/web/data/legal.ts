@@ -33,8 +33,9 @@ export type LegalDocument = {
 
 /**
  * Read from the code: `db/requester.ts` for what the request form keeps,
- * the server's logging and rate-limit middleware for what a call leaves
- * behind, `packages/core/src/http.ts` for what a registry is sent,
+ * the server's logging and rate-limit middleware and `record.ts` for what a
+ * call leaves behind, `db/server-logs.ts` for how long log lines are kept,
+ * `packages/core/src/http.ts` for what a registry is sent,
  * `app/layout.tsx` for the one script the site loads (Vercel Web Analytics;
  * its data points are listed at vercel.com/docs/analytics/privacy-policy),
  * and the absence of any cookie or storage code in the site.
@@ -48,7 +49,7 @@ export const privacy: LegalDocument = {
   inShort: [
     "No accounts, no cookies, nothing loaded from anyone but the host. Page views are counted by Vercel without a cookie, and the hash that tells one visit from the next is kept for a day at most.",
     "Requesting a country stores the country and a salted hash of your address, never the address itself.",
-    "The servers log one line per request: what was asked, how long it took, and a request id. Not who asked.",
+    "The servers log one line per request: what was asked, how long it took, and a request id. Not who asked. Warnings and errors are kept for 30 days.",
     "The registries see our server, not you.",
   ],
   bandTitle: "Everything, in order.",
@@ -82,6 +83,8 @@ export const privacy: LegalDocument = {
       title: "Using the tools",
       body: [
         "Whatever you send to a tool, through an MCP client, the HTTP API or the live playground, goes to our server and on to the registry that holds the answer. The server keeps one structured log line per request: the method and path, the status, how long it took, and the `x-request-id` it also returns to you. It does not log your address, your arguments or what came back.",
+        "Lines that report a warning or an error, such as a registry that did not answer or a call that was too slow, are also kept in our database for 30 days, so a fault can still be looked into after the host's own logs are gone. Such a line names the registry and the tool, the names of the arguments but not their values, how long the call took, and what went wrong.",
+        "When an MCP client connects, it names itself and its version, `claude-ai 0.1.0` for example. We count connections per day for each name and version, and keep nothing else from that message.",
         "The per-source rate limit counts you by the same salted hash, held in memory for one minute and gone with it. Calls from the live playground reach our server from the site, so the site passes your hash along with a secret the two share, and the limit counts you, not the site.",
       ],
       link: { label: "The API and its limits", href: "/api" },
@@ -113,7 +116,7 @@ export const privacy: LegalDocument = {
       ],
     },
   ],
-  updated: "2026-09-25",
+  updated: "2026-10-20",
 };
 
 export const terms: LegalDocument = {
