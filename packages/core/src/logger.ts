@@ -12,6 +12,9 @@ const LEVEL_RANK: Record<LogLevel, number> = {
 
 export type LogFields = Record<string, unknown>;
 
+/** One line before it is serialised, as `write` is handed it beside the JSON. */
+export type LogEntry = LogFields & { time: string; level: Exclude<LogLevel, "silent">; message: string };
+
 export interface Logger {
   debug(message: string, fields?: LogFields): void;
   info(message: string, fields?: LogFields): void;
@@ -25,8 +28,8 @@ export interface LoggerOptions {
   level?: LogLevel;
   /** Fields stamped onto every line, e.g. `{ source: "gr/diavgeia" }`. */
   base?: LogFields;
-  /** Defaults to one JSON object per line on stdout. */
-  write?: (line: string) => void;
+  /** Defaults to one JSON object per line on stdout. `entry` is the same line, unserialised. */
+  write?: (line: string, entry: LogEntry) => void;
 }
 
 /**
@@ -66,9 +69,9 @@ export function createLogger(options: LoggerOptions = {}): Logger {
   const write = options.write ?? ((line: string) => process.stdout.write(`${line}\n`));
   const threshold = LEVEL_RANK[level];
 
-  function emit(entry: LogLevel, message: string, fields?: LogFields): void {
+  function emit(entry: LogEntry["level"], message: string, fields?: LogFields): void {
     if (LEVEL_RANK[entry] < threshold) return;
-    const payload: LogFields = {
+    const payload: LogEntry = {
       time: new Date().toISOString(),
       level: entry,
       message,
@@ -77,7 +80,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     if (fields) {
       for (const [key, value] of Object.entries(fields)) payload[key] = serialize(value);
     }
-    write(JSON.stringify(payload));
+    write(JSON.stringify(payload), payload);
   }
 
   return {

@@ -31,6 +31,25 @@ export type ChangelogEntry = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "v.1.1.44",
+    title: "Keep the server's warnings and errors, and count the MCP clients that connect",
+    body: [
+      "Vercel's free plan keeps a function's logs for about an hour, so a fault found the next morning had nothing left to read. The server now writes each `warn` and `error` line to a new `server_logs` table as well as to stdout. The row holds the line exactly as stdout got it, with its time, level, message and request id beside it, so a line joins its `tool_calls` row. `info` lines, the one per request among them, stay in stdout only. A line that cannot be written is reported to stdout as `log.failed`, once, and never sent back to the database.",
+      "The status cron deletes lines older than `LOG_RETENTION_DAYS`, a new setting on the web project. It is 30 when unset, and a value that is not a positive whole number is reported and replaced by 30. The cron's answer now also says how many lines went, as `prunedLogs`.",
+      "A new `mcp_clients` table counts connections per day for each client name and version, which a client gives once, in `initialize`. The server is stateless, so a later `tools/call` carries no name: what can be counted is connections, not calls. Only an `initialize` the transport accepted is counted, and the name and version are cut at 100 characters. The monitor's checks are not counted.",
+      "The server opens one connection pool for all three writers, `connect` in `record.ts`, and the core logger's `write` now gets each line as an object as well as JSON. `/privacy` says what the two tables keep and for how long, and its date moves to today.",
+    ],
+    date: "2026-10-20",
+  },
+  {
+    version: "v.1.1.43",
+    title: "Remove the Visualize button from /live",
+    body: [
+      "The Response panel on /live showed a Visualize button that did nothing. It was a placeholder for a feature that is not built. The header now holds only the Result and Raw toggle.",
+    ],
+    date: "2026-10-20",
+  },
+  {
     version: "v.1.1.42",
     title: "License the code under the AGPL-3.0 and link its source from the footer",
     body: [

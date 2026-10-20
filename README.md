@@ -236,11 +236,12 @@ Each app has its own example file. Copy it next to the app.
 | `CACHE_MAX_ENTRIES` | server | `5000` | Number of entries in the in-memory cache |
 | `LOG_LEVEL` | server | `info` | Log threshold |
 | `LOG_TOOL_ARGS` | server | `false` | Logs argument values. For debugging only: `/privacy` says we do not log them |
-| `DATABASE_URL` | both | | Postgres. The server writes call records; the web app reads them |
+| `DATABASE_URL` | both | | Postgres. The server writes calls, clients and its warnings and errors; the web app reads the calls |
 | `DATABASE_URL_UNPOOLED` | web | | Direct connection for migrations and seeders |
 | `REQUEST_HASH_SALT` | both | | Salt for the anonymous caller id |
 | `PROXY_SECRET` | both | | Proves that a call comes from the website |
 | `CRON_SECRET` | web | | Lets the Vercel cron call `/api/cron/status` |
+| `LOG_RETENTION_DAYS` | web | `30` | Days the cron keeps the server's warnings and errors. If you change it, change `/privacy` |
 | `NEXT_PUBLIC_MCP_BASE_URL` | web | `http://localhost:3000` | Server URL in the website's snippets |
 | `MCP_SERVER_URL` | web | `http://127.0.0.1:3000` | Server URL for the `/live` proxy and the status monitor |
 
